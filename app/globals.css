@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 222.2 84% 4.9%;
+
+        --radius: 0.5rem;
+    }
+
+    .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+
+        --popover: 222.2 84% 4.9%;
+        --popover-foreground: 210 40% 98%;
+
+        --primary: 210 40% 98%;
+        --primary-foreground: 222.2 47.4% 11.2%;
+
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 212.7 26.8% 83.9%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+}
+
+/* Anpassungen für die Anwendung */
+.centered-container {
+    @apply flex min-h-screen flex-col items-center justify-center p-4;
+}
+
+.dashboard-card {
+    @apply rounded-lg border bg-white shadow-sm transition-shadow hover:shadow-md dark:bg-gray-800;
+}
+
+.dashboard-card-header {
+    @apply border-b p-4;
+}
+
+.dashboard-card-title {
+    @apply text-lg font-medium;
+}
+
+.dashboard-card-content {
+    @apply p-4;
+}
+
+/* Status-Badges */
+.status-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+.status-badge-aktiv {
+    @apply bg-blue-100 text-blue-800;
+}
+
+.status-badge-abgeschlossen {
+    @apply bg-green-100 text-green-800;
+}
+
+.status-badge-storniert {
+    @apply bg-red-100 text-red-800;
+}
+
+.status-badge-inaktiv {
+    @apply bg-gray-100 text-gray-800;
+}
+
+/* Formular-Styles */
+.form-group {
+    @apply space-y-2;
+}
+
+.form-label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300;
+}
+
+.form-hint {
+    @apply mt-1 text-sm text-gray-500 dark:text-gray-400;
+}
+
+.form-error {
+    @apply mt-1 text-sm text-red-600 dark:text-red-400;
+}
+
+/* Tabellen-Styles */
+.table-container {
+    @apply overflow-x-auto;
+}
+
+.table-action-button {
+    @apply inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-sm font-medium;
+}
+
+/* Animation für Ladezustand */
+.pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Druckstile */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .print-only {
+        display: block !important;
+    }
+
+    body {
+        font-size: 12pt;
+        line-height: 1.5;
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .dashboard-card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+}

@@ -1,0 +1,86 @@
+// Prisma Schema für das GFU-Krankmeldungssystem
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Benutzer {
+  id                String            @id @default(dbgenerated("newid()")) @db.UniqueIdentifier
+  email             String            @unique
+  password          String?           @db.NVarChar(Max)
+  vorname           String?           @db.NVarChar(255)
+  nachname          String?           @db.NVarChar(255)
+  istAdmin          Boolean           @default(false)
+  erstelltAm        DateTime          @default(now())
+  aktualisiertAm    DateTime?
+
+  // Beziehungen
+  erstellteKrankmeldungen    Krankmeldung[] @relation("ErstelltVon")
+  aktualisiertKrankmeldungen Krankmeldung[] @relation("AktualisiertVon")
+  aenderungsLogs             AenderungsLog[]
+}
+
+model Mitarbeiter {
+  id                String            @id @default(dbgenerated("newid()")) @db.UniqueIdentifier
+  personalnummer    String            @unique @db.NVarChar(50)
+  vorname           String            @db.NVarChar(255)
+  nachname          String            @db.NVarChar(255)
+  position          String?           @db.NVarChar(255)
+  istAktiv          Boolean           @default(true)
+  erstelltAm        DateTime          @default(now())
+  aktualisiertAm    DateTime?
+
+  // Beziehungen
+  krankmeldungen    Krankmeldung[]
+}
+
+model Krankmeldung {
+  id                String            @id @default(dbgenerated("newid()")) @db.UniqueIdentifier
+  mitarbeiterId     String            @db.UniqueIdentifier
+  startdatum        DateTime          @db.Date
+  enddatum          DateTime          @db.Date
+  arztbesuchDatum   DateTime?         @db.Date
+  notizen           String?           @db.NVarChar(Max)
+  status            String            @default("aktiv") @db.NVarChar(50)
+  erstelltVonId     String            @db.UniqueIdentifier
+  erstelltAm        DateTime          @default(now())
+  aktualisiertAm    DateTime?
+  aktualisiertVonId String?           @db.UniqueIdentifier
+
+  // Beziehungen
+  mitarbeiter       Mitarbeiter       @relation(fields: [mitarbeiterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  erstelltVon       Benutzer          @relation("ErstelltVon", fields: [erstelltVonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  aktualisiertVon   Benutzer?         @relation("AktualisiertVon", fields: [aktualisiertVonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Indizes
+  @@index([mitarbeiterId])
+  @@index([status])
+  @@index([startdatum])
+  @@index([enddatum])
+}
+
+model AenderungsLog {
+  id                String            @id @default(dbgenerated("newid()")) @db.UniqueIdentifier
+  tabellenname      String            @db.NVarChar(255)
+  datensatzId       String            @db.UniqueIdentifier
+  aktion            String            @db.NVarChar(50)
+  alteWerte         String?           @db.NVarChar(Max)
+  neueWerte         String?           @db.NVarChar(Max)
+  benutzerId        String            @db.UniqueIdentifier
+  benutzerAgent     String?           @db.NVarChar(255)
+  ipAdresse         String?           @db.NVarChar(50)
+  erstelltAm        DateTime          @default(now())
+
+  // Beziehungen
+  benutzer          Benutzer          @relation(fields: [benutzerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Indizes
+  @@index([benutzerId])
+  @@index([datensatzId])
+  @@index([tabellenname])
+}
