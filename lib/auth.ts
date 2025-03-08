@@ -1,24 +1,14 @@
+// lib/auth.ts
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 
+// Stelle sicher, dass ein Secret existiert
+if (!process.env.NEXTAUTH_SECRET) {
+    console.error("WARNUNG: NEXTAUTH_SECRET ist nicht definiert");
+}
+
 export const authOptions: NextAuthOptions = {
-    // Geheimschlüssel für die Codierung der JWT-Tokens
-    secret: process.env.NEXTAUTH_SECRET,
-
-    // Konfiguration der Seiten-URLs
-    pages: {
-        signIn: "/login",
-        error: "/login",
-    },
-
-    // Session-Konfiguration: JWT statt Datenbank-Sessions
-    session: {
-        strategy: "jwt",
-        maxAge: 24 * 60 * 60, // 24 Stunden
-    },
-
-    // Authentifizierungsanbieter
     providers: [
         CredentialsProvider({
             name: "Credentials",
@@ -26,26 +16,22 @@ export const authOptions: NextAuthOptions = {
                 email: { label: "Email", type: "email" },
                 password: { label: "Passwort", type: "password" }
             },
-
-            // Authentifizierungslogik
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) {
                     return null;
                 }
 
                 try {
-                    // Benutzer anhand der E-Mail-Adresse finden
-                    const user = await prisma.benutzer.findUnique({
-                        where: { email: credentials.email }
+                    const user = await prisma.benutzer.findFirst({
+                        where: {
+                            email: credentials.email
+                        }
                     });
 
-                    // Prüfen, ob Benutzer existiert und Passwort übereinstimmt
-                    // Hinweis: In einer Produktionsumgebung sollte immer Passwort-Hashing verwendet werden!
                     if (!user || user.password !== credentials.password) {
                         return null;
                     }
 
-                    // Benutzerinformationen zurückgeben, die in das JWT-Token aufgenommen werden
                     return {
                         id: user.id,
                         email: user.email,
@@ -59,29 +45,30 @@ export const authOptions: NextAuthOptions = {
             }
         })
     ],
-
-    // JWT-Konfiguration: Anpassen der Token-Inhalte
+    session: {
+        strategy: "jwt",
+        maxAge: 24 * 60 * 60, // 24 Stunden
+    },
+    secret: process.env.NEXTAUTH_SECRET,
+    pages: {
+        signIn: "/login",
+        error: "/login",
+    },
     callbacks: {
-        // Hinzufügen von benutzerdefinierten Eigenschaften zum JWT
-        jwt: async ({ token, user }) => {
+        async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
-                token.email = user.email;
-                token.name = user.name;
                 token.isAdmin = user.isAdmin;
             }
             return token;
         },
-
-        // Hinzufügen von benutzerdefinierten Eigenschaften zur Session
-        session: async ({ session, token }) => {
-            if (token) {
+        async session({ session, token }) {
+            if (session.user) {
                 session.user.id = token.id as string;
-                session.user.email = token.email as string;
-                session.user.name = token.name as string;
                 session.user.isAdmin = token.isAdmin as boolean;
             }
             return session;
-        },
+        }
     },
+    debug: process.env.NODE_ENV === "development",
 };
