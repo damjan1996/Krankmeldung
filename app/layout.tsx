@@ -3,8 +3,14 @@ import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/session-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import './globals.css';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+
+export const metadata = {
+    title: 'GFU Krankmeldungssystem',
+    description: 'System zur Erfassung und Verwaltung von Krankmeldungen',
+}
 
 export default function RootLayout({
                                        children,
@@ -13,7 +19,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="de" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable}`} suppressHydrationWarning>
+        <body className={`font-sans ${inter.variable}`}>
         <AuthProvider>
             <ThemeProvider
                 attribute="class"

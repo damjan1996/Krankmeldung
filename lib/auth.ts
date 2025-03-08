@@ -1,49 +1,79 @@
-import { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import prisma from './prisma';
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "./prisma";
 
 export const authOptions: NextAuthOptions = {
+    // Geheimschlüssel für die Codierung der JWT-Tokens
+    secret: process.env.NEXTAUTH_SECRET,
+
+    // Konfiguration der Seiten-URLs
+    pages: {
+        signIn: "/login",
+        error: "/login",
+    },
+
+    // Session-Konfiguration: JWT statt Datenbank-Sessions
+    session: {
+        strategy: "jwt",
+        maxAge: 24 * 60 * 60, // 24 Stunden
+    },
+
+    // Authentifizierungsanbieter
     providers: [
         CredentialsProvider({
-            name: 'Credentials',
+            name: "Credentials",
             credentials: {
-                email: { label: 'Email', type: 'text' },
-                password: { label: 'Passwort', type: 'password' },
+                email: { label: "Email", type: "email" },
+                password: { label: "Passwort", type: "password" }
             },
+
+            // Authentifizierungslogik
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) {
                     return null;
                 }
 
-                const user = await prisma.benutzer.findUnique({
-                    where: {
-                        email: credentials.email,
-                    },
-                });
+                try {
+                    // Benutzer anhand der E-Mail-Adresse finden
+                    const user = await prisma.benutzer.findUnique({
+                        where: { email: credentials.email }
+                    });
 
-                if (!user || user.password !== credentials.password) {
+                    // Prüfen, ob Benutzer existiert und Passwort übereinstimmt
+                    // Hinweis: In einer Produktionsumgebung sollte immer Passwort-Hashing verwendet werden!
+                    if (!user || user.password !== credentials.password) {
+                        return null;
+                    }
+
+                    // Benutzerinformationen zurückgeben, die in das JWT-Token aufgenommen werden
+                    return {
+                        id: user.id,
+                        email: user.email,
+                        name: `${user.vorname || ''} ${user.nachname || ''}`.trim(),
+                        isAdmin: user.istAdmin,
+                    };
+                } catch (error) {
+                    console.error("Fehler bei der Authentifizierung:", error);
                     return null;
                 }
-
-                return {
-                    id: user.id,
-                    email: user.email,
-                    name: `${user.vorname || ''} ${user.nachname || ''}`.trim(),
-                    isAdmin: user.istAdmin,
-                };
-            },
-        }),
+            }
+        })
     ],
+
+    // JWT-Konfiguration: Anpassen der Token-Inhalte
     callbacks: {
+        // Hinzufügen von benutzerdefinierten Eigenschaften zum JWT
         jwt: async ({ token, user }) => {
             if (user) {
                 token.id = user.id;
                 token.email = user.email;
                 token.name = user.name;
-                token.isAdmin = (user as any).isAdmin;
+                token.isAdmin = user.isAdmin;
             }
             return token;
         },
+
+        // Hinzufügen von benutzerdefinierten Eigenschaften zur Session
         session: async ({ session, token }) => {
             if (token) {
                 session.user.id = token.id as string;
@@ -54,35 +84,4 @@ export const authOptions: NextAuthOptions = {
             return session;
         },
     },
-    pages: {
-        signIn: '/login',
-    },
-    session: {
-        strategy: 'jwt',
-        maxAge: 60 * 60 * 24, // 24 hours
-    },
-    secret: process.env.NEXTAUTH_SECRET,
 };
-
-// Type extensions for Next-Auth
-declare module 'next-auth' {
-    interface User {
-        id: string;
-        email: string;
-        name?: string;
-        isAdmin: boolean;
-    }
-
-    interface Session {
-        user: User;
-    }
-}
-
-declare module 'next-auth/jwt' {
-    interface JWT {
-        id: string;
-        email: string;
-        name?: string;
-        isAdmin: boolean;
-    }
-}
