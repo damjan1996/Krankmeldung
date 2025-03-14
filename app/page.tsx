@@ -68,6 +68,11 @@ export default async function HomePage() {
                                     <Button size="lg">Anmelden</Button>
                                 </Link>
                             )}
+                            {!session && (
+                                <Button variant="outline" size="lg" asChild>
+                                    <Link href="/login">Mehr erfahren</Link>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </section>

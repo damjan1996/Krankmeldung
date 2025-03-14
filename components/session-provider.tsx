@@ -9,7 +9,7 @@ type Props = {
 
 export function AuthProvider({ children }: Props) {
     return (
-        <SessionProvider>
+        <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={true}>
             {children}
         </SessionProvider>
     );

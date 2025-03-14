@@ -85,6 +85,10 @@ export function LoginForm() {
                 description: "Sie werden zum Dashboard weitergeleitet...",
                 variant: "default",
             });
+
+            // Zur Zielseite weiterleiten
+            router.push(callbackUrl);
+            router.refresh();
         });
     }
 

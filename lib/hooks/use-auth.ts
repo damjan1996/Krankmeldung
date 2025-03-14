@@ -12,7 +12,11 @@ export function useAuth() {
     const [error, setError] = useState<string | null>(null);
 
     /**
-     * Führt den Login-Prozess durch mit direkter Weiterleitung
+     * Führt den Login-Prozess durch
+     * @param email E-Mail-Adresse des Benutzers
+     * @param password Passwort des Benutzers
+     * @param callbackUrl Weiterleitungs-URL nach erfolgreicher Anmeldung
+     * @param onSuccess Callback-Funktion bei erfolgreicher Anmeldung
      */
     async function handleLogin(
         email: string,
@@ -24,21 +28,24 @@ export function useAuth() {
         setError(null);
 
         try {
-            // Einfacher Ansatz mit direkter Weiterleitung
-            signIn("credentials", {
+            // NextAuth signIn aufrufen
+            const result = await signIn("credentials", {
                 email,
                 password,
-                callbackUrl: callbackUrl,
-                redirect: true
+                redirect: false,
+                callbackUrl,
             });
 
-            // Dieser Code wird nur erreicht, wenn die Weiterleitung fehlschlägt
-            // Wir fügen einen Fallback hinzu, falls die automatische Weiterleitung nicht funktioniert
-            setTimeout(() => {
-                setIsLoading(false);
-                window.location.href = callbackUrl;
-            }, 2000);
+            setIsLoading(false);
 
+            // Fehlerbehandlung bei fehlgeschlagener Anmeldung
+            if (!result?.ok) {
+                setError("Ungültige E-Mail-Adresse oder Passwort");
+                return;
+            }
+
+            // Success-Callback ausführen
+            onSuccess();
         } catch (error) {
             setIsLoading(false);
             setError("Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
