@@ -2,9 +2,8 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -16,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/lib/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 /**
  * Schema für die Formularvalidierung
@@ -48,8 +48,9 @@ export default function UserAuthForm({ className, ...props }: UserAuthFormProps)
     const router = useRouter();
     const { toast } = useToast();
     const searchParams = useSearchParams();
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
+
+    // Gemeinsame Auth-Logik aus dem Hook verwenden für Konsistenz
+    const { isLoading, error, handleLogin } = useAuth();
 
     // Rücksprungadresse nach erfolgreicher Anmeldung
     const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard";
@@ -71,41 +72,14 @@ export default function UserAuthForm({ className, ...props }: UserAuthFormProps)
      * Formular absenden und Anmeldeprozess starten
      */
     async function onSubmit(data: FormData) {
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            // NextAuth signIn aufrufen
-            const result = await signIn("credentials", {
-                email: data.email,
-                password: data.password,
-                redirect: false,
-                callbackUrl,
-            });
-
-            setIsLoading(false);
-
-            // Fehlerbehandlung bei fehlgeschlagener Anmeldung
-            if (!result?.ok) {
-                setError("Ungültige E-Mail-Adresse oder Passwort");
-                return;
-            }
-
+        await handleLogin(data.email, data.password, callbackUrl, () => {
             // Erfolgsmeldung anzeigen
             toast({
                 title: "Erfolgreich angemeldet",
                 description: "Sie werden zum Dashboard weitergeleitet...",
                 variant: "default",
             });
-
-            // Zur Zielseite weiterleiten
-            router.push(callbackUrl);
-            router.refresh();
-        } catch (error) {
-            setIsLoading(false);
-            setError("Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
-            console.error("Login error:", error);
-        }
+        });
     }
 
     // Handler für Demo-Button-Klicks

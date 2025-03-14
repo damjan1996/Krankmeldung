@@ -1,16 +1,9 @@
-import React from "react";
-import { Inter } from "next/font/google";
+// app/layout.tsx
 import { AuthProvider } from "@/components/session-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import './globals.css';
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-
-export const metadata = {
-    title: 'GFU Krankmeldungssystem',
-    description: 'System zur Erfassung und Verwaltung von Krankmeldungen',
-}
+import "./globals.css";
 
 export default function RootLayout({
                                        children,
@@ -19,14 +12,10 @@ export default function RootLayout({
 }) {
     return (
         <html lang="de" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable}`}>
+        <head />
+        <body suppressHydrationWarning>
         <AuthProvider>
-            <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-            >
+            <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
                 {children}
                 <Toaster />
             </ThemeProvider>
