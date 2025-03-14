@@ -168,19 +168,6 @@ export function SiteHeader({
 
                 {/* Right Side: Notifications, Actions, Theme, User Menu */}
                 <div className="flex items-center gap-2">
-                    {/* Quick Action - New Krankmeldung */}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 gap-1 hidden md:flex"
-                        asChild
-                    >
-                        <Link href="/krankmeldungen/neu">
-                            <CalendarPlus className="h-4 w-4" />
-                            <span className="hidden lg:inline-block">Neue Krankmeldung</span>
-                        </Link>
-                    </Button>
-
                     {/* Notification Button */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
