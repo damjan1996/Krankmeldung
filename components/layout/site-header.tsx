@@ -328,25 +328,6 @@ export function SiteHeader({
                                         </DropdownMenuItem>
                                     )}
                                 </DropdownMenuGroup>
-                                <DropdownMenuSeparator />
-
-                                {/* Help Section */}
-                                <DropdownMenuGroup>
-                                    <DropdownMenuItem asChild>
-                                        <Link href="/dashboard" className="cursor-pointer">
-                                            <HelpCircle className="mr-2 h-4 w-4" />
-                                            <span>Hilfe & Dokumentation</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                        <Link href="/dashboard" className="cursor-pointer">
-                                            <LifeBuoy className="mr-2 h-4 w-4" />
-                                            <span>Support</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                </DropdownMenuGroup>
-                                <DropdownMenuSeparator />
-
                                 {/* Logout */}
                                 <DropdownMenuItem
                                     onClick={handleSignOut}
