@@ -12,6 +12,12 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs";
 import { AktiveKrankmeldungen } from "@/components/dashboard/aktive-krankmeldungen";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { WelcomeBanner } from "@/components/dashboard/welcome-banner";
@@ -117,37 +123,46 @@ export default async function DashboardPage() {
                 />
             </div>
 
-            {/* Detailbereiche: Aktive Krankmeldungen und Aktivitäten */}
-            <div className="grid gap-4 md:grid-cols-2 mt-4 flex-1 min-h-0">
-                <Card className="flex flex-col overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle>Aktive Krankmeldungen</CardTitle>
-                        <CardDescription>
-                            Die neuesten laufenden Krankmeldungen im Überblick
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-auto pb-2">
-                        <AktiveKrankmeldungen krankmeldungen={aktiveKrankmeldungen} />
-                    </CardContent>
-                    <div className="px-6 pb-4 pt-1 mt-auto">
-                        <Link href="/krankmeldungen">
-                            <Button variant="outline" size="sm" className="w-full">Alle Krankmeldungen</Button>
-                        </Link>
-                    </div>
-                </Card>
+            {/* Tabs für "Aktive Krankmeldungen" und "Letzte Aktivitäten" */}
+            <Tabs defaultValue="krankmeldungen" className="mt-4 flex-1 overflow-hidden">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="krankmeldungen">Aktive Krankmeldungen</TabsTrigger>
+                    <TabsTrigger value="aktivitaeten">Letzte Aktivitäten</TabsTrigger>
+                </TabsList>
 
-                <Card className="flex flex-col overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle>Letzte Aktivitäten</CardTitle>
-                        <CardDescription>
-                            Die neuesten Änderungen im System
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-auto pb-2">
-                        <RecentActivity activities={recentActivity} maxHeight={undefined} />
-                    </CardContent>
-                </Card>
-            </div>
+                <TabsContent value="krankmeldungen" className="h-full overflow-hidden">
+                    <Card className="flex flex-col h-full overflow-hidden">
+                        <CardHeader className="pb-2">
+                            <CardTitle>Aktive Krankmeldungen</CardTitle>
+                            <CardDescription>
+                                Die neuesten laufenden Krankmeldungen im Überblick
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 overflow-auto pb-2">
+                            <AktiveKrankmeldungen krankmeldungen={aktiveKrankmeldungen} />
+                        </CardContent>
+                        <div className="px-6 pb-4 pt-1 mt-auto">
+                            <Link href="/krankmeldungen">
+                                <Button variant="outline" size="sm" className="w-full">Alle Krankmeldungen</Button>
+                            </Link>
+                        </div>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="aktivitaeten" className="h-full overflow-hidden">
+                    <Card className="flex flex-col h-full overflow-hidden">
+                        <CardHeader className="pb-2">
+                            <CardTitle>Letzte Aktivitäten</CardTitle>
+                            <CardDescription>
+                                Die neuesten Änderungen im System
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 overflow-auto pb-2">
+                            <RecentActivity activities={recentActivity} maxHeight={undefined} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             {/* Schnellzugriff auf wichtige Funktionen */}
             <Card className="mt-4">
