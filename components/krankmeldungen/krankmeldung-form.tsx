@@ -365,16 +365,16 @@ export function KrankmeldungForm({
                                     </Popover>
                                     <FormDescription>
                                         Der erste Tag der Krankmeldung.
-                                        {currentValues.startdatum && isWeekend(currentValues.startdatum) && (
-                                            <Alert variant="warning" className="mt-2">
-                                                <AlertCircle className="h-4 w-4" />
-                                                <AlertTitle>Hinweis</AlertTitle>
-                                                <AlertDescription>
-                                                    Das gewählte Startdatum fällt auf ein Wochenende.
-                                                </AlertDescription>
-                                            </Alert>
-                                        )}
                                     </FormDescription>
+                                    {currentValues.startdatum && isWeekend(currentValues.startdatum) && (
+                                        <Alert variant="warning" className="mt-2">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertTitle>Hinweis</AlertTitle>
+                                            <AlertDescription>
+                                                Das gewählte Startdatum fällt auf ein Wochenende.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -430,16 +430,16 @@ export function KrankmeldungForm({
                                     </Popover>
                                     <FormDescription>
                                         Der letzte Tag der Krankmeldung.
-                                        {currentValues.enddatum && isWeekend(currentValues.enddatum) && (
-                                            <Alert variant="warning" className="mt-2">
-                                                <AlertCircle className="h-4 w-4" />
-                                                <AlertTitle>Hinweis</AlertTitle>
-                                                <AlertDescription>
-                                                    Das gewählte Enddatum fällt auf ein Wochenende.
-                                                </AlertDescription>
-                                            </Alert>
-                                        )}
                                     </FormDescription>
+                                    {currentValues.enddatum && isWeekend(currentValues.enddatum) && (
+                                        <Alert variant="warning" className="mt-2">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertTitle>Hinweis</AlertTitle>
+                                            <AlertDescription>
+                                                Das gewählte Enddatum fällt auf ein Wochenende.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}

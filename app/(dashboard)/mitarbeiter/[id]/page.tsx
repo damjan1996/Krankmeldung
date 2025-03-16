@@ -26,6 +26,14 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Prüft, ob ein String eine gültige UUID ist
+ */
+function isValidUUID(id: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+}
+
+/**
  * Detailseite für einen Mitarbeiter
  * Zeigt Mitarbeiterinformationen und Krankmeldungshistorie
  */
@@ -42,9 +50,19 @@ export default async function MitarbeiterDetailsPage({ params }: { params: { id:
 
     try {
         // Mitarbeiterdaten aus der Datenbank laden
-        const mitarbeiter = await prisma.mitarbeiter.findUnique({
-            where: { id },
-        });
+        let mitarbeiter;
+
+        if (isValidUUID(id)) {
+            // Wenn ID eine UUID ist, direkt nach ID suchen
+            mitarbeiter = await prisma.mitarbeiter.findUnique({
+                where: { id },
+            });
+        } else {
+            // Wenn ID keine UUID ist, als Personalnummer behandeln
+            mitarbeiter = await prisma.mitarbeiter.findUnique({
+                where: { personalnummer: id },
+            });
+        }
 
         // Wenn kein Mitarbeiter gefunden wurde, 404-Seite anzeigen
         if (!mitarbeiter) {
@@ -53,7 +71,7 @@ export default async function MitarbeiterDetailsPage({ params }: { params: { id:
 
         // Alle Krankmeldungen des Mitarbeiters laden
         const alleKrankmeldungen = await prisma.krankmeldung.findMany({
-            where: { mitarbeiterId: id },
+            where: { mitarbeiterId: mitarbeiter.id },
             orderBy: { startdatum: "desc" },
             include: {
                 erstelltVon: {
@@ -127,7 +145,7 @@ export default async function MitarbeiterDetailsPage({ params }: { params: { id:
                         <Link href="/mitarbeiter">
                             <Button variant="outline">Zurück zur Übersicht</Button>
                         </Link>
-                        <Link href={`/krankmeldungen/neu?mitarbeiterId=${id}`}>
+                        <Link href={`/krankmeldungen/neu?mitarbeiterId=${mitarbeiter.id}`}>
                             <Button>Neue Krankmeldung</Button>
                         </Link>
                     </div>
