@@ -155,15 +155,16 @@ FormControl.displayName = "FormControl"
  * FormDescription-Komponente
  *
  * Beschreibungstext für ein Formularelement, der zusätzliche Informationen bereitstellt.
+ * Geändert von <p> zu <div>, um HTML-Nestingprobleme zu vermeiden
  */
 const FormDescription = React.forwardRef<
-    HTMLParagraphElement,
-    React.HTMLAttributes<HTMLParagraphElement>
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
     const { formDescriptionId } = useFormField()
 
     return (
-        <p
+        <div
             ref={ref}
             id={formDescriptionId}
             className={cn("text-sm text-muted-foreground", className)}

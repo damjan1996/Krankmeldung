@@ -23,7 +23,9 @@ export const metadata: Metadata = {
 
 // Using any type to bypass TypeScript errors
 export default async function KrankmeldungPage({ params }: any) {
-    const id = params.id;
+    // Korrigierte Verwendung der params in Next.js 15
+    const paramsObj = await params;
+    const id = paramsObj.id;
 
     function formatUserName(user: any) {
         if (user.vorname && user.nachname) {

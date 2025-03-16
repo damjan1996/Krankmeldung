@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -47,9 +47,11 @@ import {
     SlidersHorizontal,
     FileCheck,
     FileX2,
+    Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/lib/hooks/use-toast";
 
 /**
  * Interface für die Daten in der Krankmeldungstabelle
@@ -109,7 +111,7 @@ const TableSkeleton = ({ rowCount = 5 }: { rowCount?: number }) => (
  * Tabellen-Komponente zur Anzeige von Krankmeldungen
  */
 export function KrankmeldungenTabelle({
-                                          data,
+                                          data: initialData,
                                           isLoading = false,
                                           showActions = true,
                                           showPagination = true,
@@ -118,6 +120,9 @@ export function KrankmeldungenTabelle({
                                           onStatusChange,
                                       }: KrankmeldungenTabelleProps) {
     const router = useRouter();
+    const { toast } = useToast();
+    const [isUpdating, setIsUpdating] = useState<string | null>(null);
+    const [data, setData] = useState<KrankmeldungenTabelleDaten[]>(initialData);
 
     // Table States
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -125,29 +130,101 @@ export function KrankmeldungenTabelle({
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [rowSelection, setRowSelection] = useState({});
 
+    // Aktualisieren der lokalen Daten, wenn die Props-Daten sich ändern
+    useEffect(() => {
+        setData(initialData);
+    }, [initialData]);
+
+    // Funktion zum Formatieren von Datum für API-Anfragen
+    const formatDate = useCallback((date: string | Date) => {
+        if (!date) return null;
+        const d = new Date(date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }, []);
+
     /**
      * Standard-Implementierung für Statusänderungen
      */
     const defaultHandleStatusChange = async (id: string, newStatus: string) => {
+        setIsUpdating(id);
         try {
-            const response = await fetch(`/api/krankmeldungen/${id}`, {
+            // Optimistische UI-Aktualisierung - Status lokal ändern
+            setData(prevData =>
+                prevData.map(item =>
+                    item.id === id ? { ...item, status: newStatus as "aktiv" | "abgeschlossen" | "storniert" } : item
+                )
+            );
+
+            // Zuerst die aktuelle Krankmeldung abrufen
+            const getResponse = await fetch(`/api/krankmeldungen/${id}`);
+
+            if (!getResponse.ok) {
+                // Lokales Update rückgängig machen
+                setData(initialData);
+                toast({
+                    title: "Fehler",
+                    description: "Krankmeldung konnte nicht geladen werden",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            const currentData = await getResponse.json();
+
+            // Daten für die API vorbereiten - mit korrektem Datumsformat
+            const updateData = {
+                mitarbeiterId: currentData.mitarbeiterId,
+                startdatum: formatDate(currentData.startdatum),
+                enddatum: formatDate(currentData.enddatum),
+                arztbesuchDatum: currentData.arztbesuchDatum ? formatDate(currentData.arztbesuchDatum) : null,
+                notizen: currentData.notizen,
+                status: newStatus
+            };
+
+            // Jetzt den Status aktualisieren mit allen anderen benötigten Feldern
+            const updateResponse = await fetch(`/api/krankmeldungen/${id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ status: newStatus }),
+                body: JSON.stringify(updateData),
             });
 
-            if (!response.ok) {
-                console.error("Statusänderung fehlgeschlagen");
+            if (!updateResponse.ok) {
+                // Lokales Update rückgängig machen
+                setData(initialData);
+                const errorData = await updateResponse.json().catch(() => null);
+                console.error("Fehler beim Statusupdate:", errorData);
+                toast({
+                    title: "Statusänderung fehlgeschlagen",
+                    description: errorData?.error || "Fehler beim Aktualisieren des Status",
+                    variant: "destructive",
+                });
                 return;
             }
 
-            // Seite aktualisieren, um Änderungen anzuzeigen
-            router.refresh();
+            toast({
+                title: "Status aktualisiert",
+                description: `Krankmeldung wurde als "${newStatus}" markiert`,
+                variant: "default",
+            });
+
+            // Vollständigen Page-Refresh durchführen, um alle Daten korrekt zu aktualisieren
+            // Verwende einen Timeout, damit der Toast noch angezeigt werden kann
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } catch (error) {
-            // Fehler loggen und keine weitere Behandlung
+            // Lokales Update rückgängig machen
+            setData(initialData);
             console.error("Fehler bei Statusänderung:", error);
+            toast({
+                title: "Fehler",
+                description: "Es ist ein unerwarteter Fehler aufgetreten",
+                variant: "destructive",
+            });
+        } finally {
+            setIsUpdating(null);
         }
     };
 
@@ -155,7 +232,7 @@ export function KrankmeldungenTabelle({
     const handleStatusChange = onStatusChange || defaultHandleStatusChange;
 
     // Tabellenspalten definieren
-    const getColumns = (): ColumnDef<KrankmeldungenTabelleDaten>[] => [
+    const getColumns = useCallback((): ColumnDef<KrankmeldungenTabelleDaten>[] => [
         // Mitarbeiter
         {
             accessorKey: "mitarbeiter",
@@ -254,15 +331,20 @@ export function KrankmeldungenTabelle({
             id: "actions",
             cell: ({ row }) => {
                 const krankmeldung = row.original;
+                const isCurrentlyUpdating = isUpdating === krankmeldung.id;
 
                 return (
                     <div className="flex justify-end">
                         {showActions ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentlyUpdating}>
+                                        {isCurrentlyUpdating ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        )}
                                         <span className="sr-only">Menü öffnen</span>
-                                        <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -282,7 +364,11 @@ export function KrankmeldungenTabelle({
                                     <DropdownMenuSeparator />
                                     {krankmeldung.status === "aktiv" && (
                                         <DropdownMenuItem
-                                            onSelect={() => handleStatusChange(krankmeldung.id, "abgeschlossen")}
+                                            disabled={isCurrentlyUpdating}
+                                            onSelect={(e) => {
+                                                e.preventDefault();
+                                                handleStatusChange(krankmeldung.id, "abgeschlossen");
+                                            }}
                                         >
                                             <FileCheck className="mr-2 h-4 w-4" />
                                             Als abgeschlossen markieren
@@ -290,7 +376,11 @@ export function KrankmeldungenTabelle({
                                     )}
                                     {krankmeldung.status !== "storniert" && (
                                         <DropdownMenuItem
-                                            onSelect={() => handleStatusChange(krankmeldung.id, "storniert")}
+                                            disabled={isCurrentlyUpdating}
+                                            onSelect={(e) => {
+                                                e.preventDefault();
+                                                handleStatusChange(krankmeldung.id, "storniert");
+                                            }}
                                             className="text-destructive"
                                         >
                                             <FileX2 className="mr-2 h-4 w-4" />
@@ -316,7 +406,7 @@ export function KrankmeldungenTabelle({
                 );
             },
         },
-    ];
+    ], [isUpdating, handleStatusChange, formatDate]);
 
     /**
      * Tabelleninstanz erstellen

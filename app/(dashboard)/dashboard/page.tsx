@@ -69,6 +69,7 @@ export default async function DashboardPage() {
             include: {
                 mitarbeiter: {
                     select: {
+                        id: true, // WICHTIG: ID der Mitarbeiter mit auswählen
                         vorname: true,
                         nachname: true,
                         personalnummer: true,

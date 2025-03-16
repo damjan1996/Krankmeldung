@@ -38,7 +38,8 @@ export async function GET(
         }
 
         // Krankmeldungs-ID aus Parametern extrahieren
-        const { id } = context.params;
+        const params = await context.params;
+        const { id } = params;
 
         // Krankmeldung aus der Datenbank abrufen
         const krankmeldung = await prisma.krankmeldung.findUnique({
@@ -111,7 +112,8 @@ export async function PUT(
         }
 
         // Krankmeldungs-ID aus Parametern extrahieren
-        const { id } = context.params;
+        const params = await context.params;
+        const { id } = params;
 
         // Anfragedaten parsen
         const rawData = await request.json();
@@ -247,7 +249,8 @@ export async function DELETE(
         }
 
         // Krankmeldungs-ID aus Parametern extrahieren
-        const { id } = context.params;
+        const params = await context.params;
+        const { id } = params;
 
         // Prüfen, ob Krankmeldung existiert
         const existingKrankmeldung = await prisma.krankmeldung.findUnique({
