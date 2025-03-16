@@ -19,12 +19,13 @@ export default function RootLayout({
 }) {
     return (
         <html lang="de" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable}`}>
+        <body className={`font-sans ${inter.variable}`} suppressHydrationWarning>
         <AuthProvider>
             <ThemeProvider
                 attribute="class"
-                defaultTheme="system"
-                enableSystem
+                defaultTheme="light"
+                enableSystem={false}
+                forcedTheme="light"
                 disableTransitionOnChange
             >
                 {children}
