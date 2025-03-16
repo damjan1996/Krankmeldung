@@ -2,7 +2,7 @@
 
 import { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -17,6 +17,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KrankmeldungenTabelle } from "@/components/krankmeldungen/krankmeldungen-tabelle";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export const metadata: Metadata = {
     title: "Mitarbeiter Details - GFU Krankmeldungssystem",
@@ -27,7 +29,14 @@ export const metadata: Metadata = {
  * Detailseite für einen Mitarbeiter
  * Zeigt Mitarbeiterinformationen und Krankmeldungshistorie
  */
-export default async function MitarbeiterDetailsPage({ params }: any) {
+export default async function MitarbeiterDetailsPage({ params }: { params: { id: string } }) {
+    // Benutzer-Session für Zugriffsrechte prüfen
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+        redirect("/login");
+    }
+
     // Mitarbeiter-ID aus den URL-Parametern extrahieren
     const { id } = params;
 
@@ -132,8 +141,8 @@ export default async function MitarbeiterDetailsPage({ params }: any) {
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                 mitarbeiter.istAktiv ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                             }`}>
-                {mitarbeiter.istAktiv ? "Aktiv" : "Inaktiv"}
-              </span>
+                                {mitarbeiter.istAktiv ? "Aktiv" : "Inaktiv"}
+                            </span>
                         </CardTitle>
                         <CardDescription>
                             Personalnummer: {mitarbeiter.personalnummer}
