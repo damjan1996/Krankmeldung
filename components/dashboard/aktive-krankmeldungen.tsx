@@ -22,6 +22,7 @@ import { CalendarClock, ExternalLink, UserRound } from "lucide-react";
  * Interface für einen Mitarbeiter in der Krankmeldung
  */
 interface Mitarbeiter {
+    id: string;
     vorname: string;
     nachname: string;
     personalnummer: string;
@@ -108,7 +109,7 @@ export function AktiveKrankmeldungen({
                             <TableRow key={krankmeldung.id}>
                                 <TableCell className="font-medium whitespace-nowrap">
                                     <Link
-                                        href={`/mitarbeiter/${krankmeldung.mitarbeiter.personalnummer}`}
+                                        href={`/mitarbeiter/${krankmeldung.mitarbeiter.id}`}
                                         className="hover:underline inline-flex items-center"
                                     >
                                         <UserRound className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />
