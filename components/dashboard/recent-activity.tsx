@@ -191,7 +191,7 @@ export function RecentActivity({
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 h-full">
             {/* Optional: Header */}
             {showHeader && (
                 <>
@@ -208,11 +208,11 @@ export function RecentActivity({
             {/* Aktivitätenliste mit Scrollbereich */}
             <ScrollArea
                 className={cn(
-                    "pr-4",
-                    maxHeight && `max-h-[${maxHeight}px]`
+                    "pr-4 h-full",
+                    maxHeight !== undefined && `max-h-[${maxHeight}px]`
                 )}
             >
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {activities.map((activity) => {
                         // Alte und neue Werte parsen
                         const alteWerte = activity.alteWerte ? JSON.parse(activity.alteWerte) : null;
@@ -247,12 +247,12 @@ export function RecentActivity({
                                 {/* Aktivitätsdetails */}
                                 <div className="flex-1 space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-sm font-medium">
+                                        <p className="text-sm font-medium whitespace-nowrap">
                                             {text}
                                         </p>
                                         <time
                                             dateTime={new Date(activity.erstelltAm).toISOString()}
-                                            className="text-xs text-muted-foreground"
+                                            className="text-xs text-muted-foreground whitespace-nowrap ml-2"
                                             title={format(new Date(activity.erstelltAm), "dd.MM.yyyy HH:mm:ss", { locale: de })}
                                         >
                                             {getRelativeTime(new Date(activity.erstelltAm))}

@@ -31,12 +31,12 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex min-h-screen flex-col">
+        <div className="flex min-h-screen flex-col overflow-hidden">
             {/* Header mit Navigation und Benutzermenü */}
             <SiteHeader />
 
             {/* Hauptinhalt mit Seitenleiste und Content-Bereich */}
-            <div className="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
+            <div className="container flex-1 items-start overflow-hidden md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
                 {/* Seitennavigation (links) */}
                 <aside className="fixed top-14 z-30 -ml-2 hidden h-[calc(100vh-3.5rem)] w-full shrink-0 md:sticky md:block">
                     <SidebarNav className="py-6" />
@@ -48,14 +48,7 @@ export default async function DashboardLayout({
                 </main>
             </div>
 
-            {/* Footer (optional) */}
-            <footer className="border-t py-6 md:py-0">
-                <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row">
-                    <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-                        &copy; {new Date().getFullYear()} GFU Krankmeldungssystem. Alle Rechte vorbehalten.
-                    </p>
-                </div>
-            </footer>
+            {/* Footer wurde entfernt, um mehr Platz für das Dashboard zu schaffen */}
         </div>
     );
 }

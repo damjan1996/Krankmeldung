@@ -57,17 +57,17 @@ export function WelcomeBanner({
     const firstName = userName.split(' ')[0];
 
     return (
-        <Card className="bg-primary text-primary-foreground">
+        <Card className="bg-card text-card-foreground border">
             <CardContent className="p-6">
                 <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
                         <h1 className="text-2xl font-bold">
                             {greeting}, {firstName}!
                         </h1>
-                        <p className="text-primary-foreground/90 text-sm sm:text-base">
+                        <p className="text-muted-foreground text-sm sm:text-base">
                             Willkommen im GFU Krankmeldungssystem
                             {krankmeldungCount !== undefined && (
-                                <>. Es gibt derzeit <strong>{krankmeldungCount}</strong> aktive Krankmeldung{krankmeldungCount !== 1 && "en"}</>
+                                <>. Es gibt derzeit <strong className="text-foreground">{krankmeldungCount}</strong> aktive Krankmeldung{krankmeldungCount !== 1 && "en"}</>
                             )}
                         </p>
                     </div>
@@ -75,9 +75,9 @@ export function WelcomeBanner({
                     {showCreateButton && (
                         <div className="flex">
                             <Button
-                                variant="secondary"
+                                variant="default"
                                 size="sm"
-                                className="gap-1 sm:gap-2"
+                                className="gap-1 sm:gap-2 whitespace-nowrap"
                                 asChild
                             >
                                 <Link href="/krankmeldungen/neu">

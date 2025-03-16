@@ -39,27 +39,33 @@ export function KrankmeldungStatusCard({
                                        }: KrankmeldungStatusCardProps) {
     // Icon basierend auf Typ auswählen
     let IconComponent;
+    let bgClass = "";
+
     switch (icon) {
         case "active":
             IconComponent = <FileWarning className="h-5 w-5 text-blue-500" />;
+            bgClass = "bg-blue-50";
             break;
         case "completed":
             IconComponent = <FileCheck className="h-5 w-5 text-green-500" />;
+            bgClass = "bg-green-50";
             break;
         case "users":
             IconComponent = <Users className="h-5 w-5 text-orange-500" />;
+            bgClass = "bg-orange-50";
             break;
         default:
             IconComponent = null;
+            break;
     }
 
     return (
-        <Card className={cn("overflow-hidden", className)}>
+        <Card className={cn("overflow-hidden", bgClass, className)}>
             <CardContent className="p-6">
                 <div className="flex flex-col space-y-2">
                     {/* Header mit Icon und Titel */}
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-muted-foreground">
+                        <p className="text-sm font-medium text-muted-foreground whitespace-nowrap">
                             {title}
                         </p>
                         {IconComponent}
@@ -73,7 +79,7 @@ export function KrankmeldungStatusCard({
                         {trend && (
                             <span
                                 className={cn(
-                                    "text-xs font-medium inline-flex items-center",
+                                    "text-xs font-medium inline-flex items-center whitespace-nowrap",
                                     trend.isPositive ? "text-green-600" : "text-red-600"
                                 )}
                             >

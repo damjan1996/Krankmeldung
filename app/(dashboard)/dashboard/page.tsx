@@ -88,81 +88,81 @@ export default async function DashboardPage() {
     ]);
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col h-[calc(100vh-9rem)] overflow-hidden">
             {/* Willkommensbanner mit Benutzername */}
-            <WelcomeBanner userName={session?.user?.name || "Benutzer"} />
+            <WelcomeBanner
+                userName={session?.user?.name || "Benutzer"}
+                krankmeldungCount={aktiveKrankmeldungenCount}
+            />
 
             {/* Kennzahlenkarten */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3 mt-4">
                 <KrankmeldungStatusCard
                     title="Aktive Krankmeldungen"
                     value={aktiveKrankmeldungenCount}
                     description="Aktuell laufende Krankmeldungen"
-                    className="bg-blue-50"
+                    icon="active"
                 />
                 <KrankmeldungStatusCard
                     title="Abgeschlossene Krankmeldungen"
                     value={abgeschlosseneKrankmeldungenCount}
                     description="Bereits beendete Krankmeldungen"
-                    className="bg-green-50"
+                    icon="completed"
                 />
                 <KrankmeldungStatusCard
                     title="Aktive Mitarbeiter"
                     value={mitarbeiterCount}
                     description="Anzahl aktiver Mitarbeiter"
-                    className="bg-orange-50"
+                    icon="users"
                 />
             </div>
 
             {/* Detailbereiche: Aktive Krankmeldungen und Aktivitäten */}
-            <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                    <CardHeader className="pb-3">
+            <div className="grid gap-4 md:grid-cols-2 mt-4 flex-1 min-h-0">
+                <Card className="flex flex-col overflow-hidden">
+                    <CardHeader className="pb-2">
                         <CardTitle>Aktive Krankmeldungen</CardTitle>
                         <CardDescription>
                             Die neuesten laufenden Krankmeldungen im Überblick
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 overflow-auto pb-2">
                         <AktiveKrankmeldungen krankmeldungen={aktiveKrankmeldungen} />
-                        <div className="mt-4 flex justify-end">
-                            <Link href="/krankmeldungen">
-                                <Button variant="outline">Alle Krankmeldungen</Button>
-                            </Link>
-                        </div>
                     </CardContent>
+                    <div className="px-6 pb-4 pt-1 mt-auto">
+                        <Link href="/krankmeldungen">
+                            <Button variant="outline" size="sm" className="w-full">Alle Krankmeldungen</Button>
+                        </Link>
+                    </div>
                 </Card>
 
-                <Card>
-                    <CardHeader className="pb-3">
+                <Card className="flex flex-col overflow-hidden">
+                    <CardHeader className="pb-2">
                         <CardTitle>Letzte Aktivitäten</CardTitle>
                         <CardDescription>
                             Die neuesten Änderungen im System
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <RecentActivity activities={recentActivity} />
+                    <CardContent className="flex-1 overflow-auto pb-2">
+                        <RecentActivity activities={recentActivity} maxHeight={undefined} />
                     </CardContent>
                 </Card>
             </div>
 
             {/* Schnellzugriff auf wichtige Funktionen */}
-            <Card>
-                <CardHeader className="pb-3">
+            <Card className="mt-4">
+                <CardHeader className="py-2">
                     <CardTitle>Schnellzugriff</CardTitle>
-                    <CardDescription>
-                        Direkte Links zu den wichtigsten Funktionen
-                    </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-4">
+                <CardContent className="flex gap-4 pb-4">
                     <Link href="/krankmeldungen/neu">
-                        <Button>Neue Krankmeldung</Button>
+                        <Button size="sm">Neue Krankmeldung</Button>
                     </Link>
                     <Link href="/krankmeldungen">
-                        <Button variant="outline">Krankmeldungen verwalten</Button>
+                        <Button variant="outline" size="sm">Krankmeldungen verwalten</Button>
                     </Link>
                     <Link href="/mitarbeiter">
-                        <Button variant="outline">Mitarbeiter anzeigen</Button>
+                        <Button variant="outline" size="sm">Mitarbeiter anzeigen</Button>
                     </Link>
                 </CardContent>
             </Card>

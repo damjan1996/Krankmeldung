@@ -82,7 +82,7 @@ export function AktiveKrankmeldungen({
                     <TableRow>
                         <TableHead>Mitarbeiter</TableHead>
                         <TableHead>Zeitraum</TableHead>
-                        <TableHead className="text-right">Dauer</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Dauer</TableHead>
                         <TableHead className="text-right">Status</TableHead>
                         <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
@@ -106,7 +106,7 @@ export function AktiveKrankmeldungen({
 
                         return (
                             <TableRow key={krankmeldung.id}>
-                                <TableCell className="font-medium">
+                                <TableCell className="font-medium whitespace-nowrap">
                                     <Link
                                         href={`/mitarbeiter/${krankmeldung.mitarbeiter.personalnummer}`}
                                         className="hover:underline inline-flex items-center"
@@ -118,7 +118,7 @@ export function AktiveKrankmeldungen({
                                         {krankmeldung.mitarbeiter.personalnummer}
                                     </div>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="whitespace-nowrap">
                                     <div>
                                         {format(startDate, "dd.MM.yyyy", { locale: de })} - {format(endDate, "dd.MM.yyyy", { locale: de })}
                                     </div>
@@ -130,13 +130,13 @@ export function AktiveKrankmeldungen({
                                         />
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right whitespace-nowrap">
                                     {totalDuration} {totalDuration === 1 ? "Tag" : "Tage"}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Badge
                                         variant={krankmeldung.status === "aktiv" ? "default" : "secondary"}
-                                        className="font-normal"
+                                        className="font-normal whitespace-nowrap"
                                     >
                                         {krankmeldung.status}
                                     </Badge>
