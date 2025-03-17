@@ -5,7 +5,11 @@ import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma, fetchWithCache } from "@/lib/prisma";
+
+// Cache-Schlüssel für Mitarbeiter generieren
+const getCacheKey = (id: string, includeKrankmeldungen = false) =>
+    `mitarbeiter-${id}${includeKrankmeldungen ? '-with-krankmeldungen' : ''}`;
 
 /**
  * Schema für Aktualisierung eines Mitarbeiters
@@ -19,7 +23,7 @@ const updateMitarbeiterSchema = z.object({
 });
 
 /**
- * GET-Handler: Einzelnen Mitarbeiter abrufen
+ * GET-Handler: Einzelnen Mitarbeiter abrufen mit Caching
  */
 export async function GET(
     request: NextRequest,
@@ -36,50 +40,77 @@ export async function GET(
             );
         }
 
-        // Mitarbeiter-ID aus Parametern extrahieren
-        const { id } = context.params;
+        // Mitarbeiter-ID sicher aus den Parametern extrahieren
+        const id = context.params.id;
 
-        // Mitarbeiter aus der Datenbank abrufen
-        const mitarbeiter = await prisma.mitarbeiter.findUnique({
-            where: { id },
-        });
+        if (!id) {
+            return NextResponse.json(
+                { error: "Keine gültige Mitarbeiter-ID" },
+                { status: 400 }
+            );
+        }
+
+        // Optional: Krankmeldungen mit abrufen basierend auf Query-Parametern
+        const includeKrankmeldungen = request.nextUrl.searchParams.get("includeKrankmeldungen") === "true";
+
+        // Cache-Schlüssel basierend auf Anforderungen
+        const cacheKey = getCacheKey(id, includeKrankmeldungen);
+
+        // Mitarbeiter mit Caching abrufen
+        const result = await fetchWithCache(
+            cacheKey,
+            async () => {
+                // Mitarbeiter aus der Datenbank abrufen
+                const mitarbeiter = await prisma.mitarbeiter.findUnique({
+                    where: { id },
+                });
+
+                // Wenn kein Mitarbeiter gefunden wurde, null zurückgeben
+                if (!mitarbeiter) {
+                    return null;
+                }
+
+                // Wenn Krankmeldungen angefordert, diese parallel laden
+                if (includeKrankmeldungen) {
+                    const krankmeldungen = await prisma.krankmeldung.findMany({
+                        where: { mitarbeiterId: id },
+                        orderBy: { startdatum: "desc" },
+                        include: {
+                            erstelltVon: {
+                                select: {
+                                    vorname: true,
+                                    nachname: true,
+                                    email: true,
+                                },
+                            },
+                        },
+                    });
+
+                    // Erweiterte Antwort mit Mitarbeiter und dessen Krankmeldungen
+                    return {
+                        ...mitarbeiter,
+                        krankmeldungen,
+                    };
+                }
+
+                // Standard-Antwort ohne Krankmeldungen
+                return mitarbeiter;
+            },
+            30000 // 30 Sekunden TTL
+        );
 
         // Wenn kein Mitarbeiter gefunden wurde, 404 zurückgeben
-        if (!mitarbeiter) {
+        if (!result) {
             return NextResponse.json(
                 { error: "Mitarbeiter nicht gefunden" },
                 { status: 404 }
             );
         }
 
-        // Optional: Zusätzliche Daten wie Krankmeldungen basierend auf Query-Parametern laden
-        const includeKrankmeldungen = request.nextUrl.searchParams.get("includeKrankmeldungen") === "true";
-
-        // Wenn Krankmeldungen angefordert wurden, diese mit abrufen
-        if (includeKrankmeldungen) {
-            const krankmeldungen = await prisma.krankmeldung.findMany({
-                where: { mitarbeiterId: id },
-                orderBy: { startdatum: "desc" },
-                include: {
-                    erstelltVon: {
-                        select: {
-                            vorname: true,
-                            nachname: true,
-                            email: true,
-                        },
-                    },
-                },
-            });
-
-            // Erweiterte Antwort mit Mitarbeiter und dessen Krankmeldungen
-            return NextResponse.json({
-                ...mitarbeiter,
-                krankmeldungen,
-            });
-        }
-
-        // Erfolgreiche Antwort mit Mitarbeiterdaten
-        return NextResponse.json(mitarbeiter);
+        // Response mit Cache-Control-Header
+        const response = NextResponse.json(result);
+        response.headers.set('Cache-Control', 'private, max-age=30');
+        return response;
     } catch (error) {
         console.error("Fehler beim Abrufen des Mitarbeiters:", error);
         return NextResponse.json(
@@ -90,7 +121,7 @@ export async function GET(
 }
 
 /**
- * PUT-Handler: Mitarbeiter aktualisieren
+ * PUT-Handler: Mitarbeiter aktualisieren mit Cache-Invalidierung
  */
 export async function PUT(
     request: NextRequest,
@@ -107,8 +138,15 @@ export async function PUT(
             );
         }
 
-        // Mitarbeiter-ID aus Parametern extrahieren
-        const { id } = context.params;
+        // Mitarbeiter-ID sicher aus den Parametern extrahieren
+        const id = context.params.id;
+
+        if (!id) {
+            return NextResponse.json(
+                { error: "Keine gültige Mitarbeiter-ID" },
+                { status: 400 }
+            );
+        }
 
         // Anfragedaten parsen
         const rawData = await request.json();
@@ -125,9 +163,17 @@ export async function PUT(
 
         const data = validationResult.data;
 
-        // Prüfen, ob Mitarbeiter existiert
+        // Prüfen, ob Mitarbeiter existiert (mit minimalem Select für Performance)
         const existingMitarbeiter = await prisma.mitarbeiter.findUnique({
             where: { id },
+            select: {
+                id: true,
+                vorname: true,
+                nachname: true,
+                personalnummer: true,
+                position: true,
+                istAktiv: true
+            }
         });
 
         if (!existingMitarbeiter) {
@@ -141,6 +187,7 @@ export async function PUT(
         if (data.personalnummer && data.personalnummer !== existingMitarbeiter.personalnummer) {
             const existingPersonalnummer = await prisma.mitarbeiter.findUnique({
                 where: { personalnummer: data.personalnummer },
+                select: { id: true }
             });
 
             if (existingPersonalnummer && existingPersonalnummer.id !== id) {
@@ -199,6 +246,19 @@ export async function PUT(
             return updatedMitarbeiter;
         });
 
+        // Alle Cache-Einträge für diesen Mitarbeiter invalidieren
+        if (global.__prismaCache) {
+            global.__prismaCache.delete(getCacheKey(id, false));
+            global.__prismaCache.delete(getCacheKey(id, true));
+
+            // Zusätzlich alle Mitarbeiterlisten-Caches löschen
+            for (const key of global.__prismaCache.keys()) {
+                if (key.startsWith('mitarbeiter-list-')) {
+                    global.__prismaCache.delete(key);
+                }
+            }
+        }
+
         // Erfolgreiche Antwort mit aktualisierten Daten
         return NextResponse.json({
             message: "Mitarbeiter erfolgreich aktualisiert",
@@ -241,12 +301,20 @@ export async function DELETE(
             );
         }
 
-        // Mitarbeiter-ID aus Parametern extrahieren
-        const { id } = context.params;
+        // Mitarbeiter-ID sicher aus den Parametern extrahieren
+        const id = context.params.id;
 
-        // Prüfen, ob Mitarbeiter existiert
+        if (!id) {
+            return NextResponse.json(
+                { error: "Keine gültige Mitarbeiter-ID" },
+                { status: 400 }
+            );
+        }
+
+        // Prüfen, ob Mitarbeiter existiert (mit minimalem Select für Performance)
         const existingMitarbeiter = await prisma.mitarbeiter.findUnique({
             where: { id },
+            select: { id: true, istAktiv: true }
         });
 
         if (!existingMitarbeiter) {
@@ -256,15 +324,28 @@ export async function DELETE(
             );
         }
 
-        // Prüfen, ob Mitarbeiter aktive Krankmeldungen hat
-        const activeKrankmeldungen = await prisma.krankmeldung.findMany({
+        // Prüfen, ob Mitarbeiter aktive Krankmeldungen hat (mit Count für Performance)
+        const activeKrankmeldungenCount = await prisma.krankmeldung.count({
             where: {
                 mitarbeiterId: id,
                 status: "aktiv",
             },
         });
 
-        if (activeKrankmeldungen.length > 0) {
+        if (activeKrankmeldungenCount > 0) {
+            // Nur wenn Details benötigt werden, die vollen Datensätze abrufen
+            const activeKrankmeldungen = await prisma.krankmeldung.findMany({
+                where: {
+                    mitarbeiterId: id,
+                    status: "aktiv",
+                },
+                select: {
+                    id: true,
+                    startdatum: true,
+                    enddatum: true
+                }
+            });
+
             return NextResponse.json(
                 {
                     error: "Mitarbeiter kann nicht deaktiviert werden, da aktive Krankmeldungen vorliegen",
@@ -305,6 +386,19 @@ export async function DELETE(
                 },
             });
         });
+
+        // Alle Cache-Einträge für diesen Mitarbeiter und Listen invalidieren
+        if (global.__prismaCache) {
+            global.__prismaCache.delete(getCacheKey(id, false));
+            global.__prismaCache.delete(getCacheKey(id, true));
+
+            // Zusätzlich alle Mitarbeiterlisten-Caches löschen
+            for (const key of global.__prismaCache.keys()) {
+                if (key.startsWith('mitarbeiter-list-')) {
+                    global.__prismaCache.delete(key);
+                }
+            }
+        }
 
         // Erfolgreiche Antwort
         return NextResponse.json({

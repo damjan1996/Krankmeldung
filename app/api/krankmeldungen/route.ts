@@ -5,7 +5,11 @@ import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma, fetchWithCache } from "@/lib/prisma";
+
+// Cache-Schlüssel für Krankmeldungslisten
+const getListCacheKey = (params: URLSearchParams) =>
+    `krankmeldungen-list-${Array.from(params.entries()).sort().join('-')}`;
 
 /**
  * Schema für Erstellung einer neuen Krankmeldung
@@ -21,7 +25,7 @@ const createKrankmeldungSchema = z.object({
 });
 
 /**
- * GET-Handler: Liste von Krankmeldungen abrufen mit optionaler Filterung
+ * GET-Handler: Liste von Krankmeldungen abrufen mit optionaler Filterung und Caching
  */
 export async function GET(request: NextRequest) {
     try {
@@ -37,6 +41,8 @@ export async function GET(request: NextRequest) {
 
         // Query-Parameter extrahieren für Filterung
         const searchParams = request.nextUrl.searchParams;
+        const cacheKey = getListCacheKey(searchParams);
+
         const mitarbeiterId = searchParams.get("mitarbeiterId");
         const status = searchParams.get("status");
         const startDate = searchParams.get("startDate");
@@ -44,118 +50,125 @@ export async function GET(request: NextRequest) {
         const zeitraum = searchParams.get("zeitraum");
         const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined;
 
-        // Filter für Datenbankabfrage aufbauen
-        const filter: any = {};
+        // Daten mit Caching abrufen
+        const result = await fetchWithCache(
+            cacheKey,
+            async () => {
+                // Filter für Datenbankabfrage aufbauen
+                const filter: any = {};
 
-        // Mitarbeiter-Filter anwenden
-        if (mitarbeiterId) {
-            filter.mitarbeiterId = mitarbeiterId;
-        }
+                // Mitarbeiter-Filter anwenden
+                if (mitarbeiterId) {
+                    filter.mitarbeiterId = mitarbeiterId;
+                }
 
-        // Status-Filter anwenden
-        if (status && ["aktiv", "abgeschlossen", "storniert"].includes(status)) {
-            filter.status = status;
-        }
+                // Status-Filter anwenden
+                if (status && ["aktiv", "abgeschlossen", "storniert"].includes(status)) {
+                    filter.status = status;
+                }
 
-        // Datumsbereich-Filter anwenden
-        if (startDate) {
-            filter.startdatum = {
-                gte: new Date(startDate),
-            };
-        }
+                // Datumsbereich-Filter anwenden
+                if (startDate) {
+                    filter.startdatum = {
+                        gte: new Date(startDate),
+                    };
+                }
 
-        if (endDate) {
-            filter.enddatum = {
-                lte: new Date(endDate),
-            };
-        }
+                if (endDate) {
+                    filter.enddatum = {
+                        lte: new Date(endDate),
+                    };
+                }
 
-        // Zeitraum-Filter anwenden (falls vorhanden)
-        if (zeitraum) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+                // Zeitraum-Filter anwenden (falls vorhanden)
+                if (zeitraum) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
 
-            if (zeitraum === "aktuell") {
-                filter.startdatum = {
-                    lte: today,
-                };
-                filter.enddatum = {
-                    gte: today,
-                };
-            } else if (zeitraum === "zukuenftig") {
-                filter.startdatum = {
-                    gt: today,
-                };
-            } else if (zeitraum === "vergangen") {
-                filter.enddatum = {
-                    lt: today,
-                };
-            } else if (zeitraum === "letzte30") {
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(today.getDate() - 30);
-                filter.startdatum = {
-                    gte: thirtyDaysAgo,
-                };
-            }
-        }
+                    if (zeitraum === "aktuell") {
+                        filter.startdatum = {
+                            lte: today,
+                        };
+                        filter.enddatum = {
+                            gte: today,
+                        };
+                    } else if (zeitraum === "zukuenftig") {
+                        filter.startdatum = {
+                            gt: today,
+                        };
+                    } else if (zeitraum === "vergangen") {
+                        filter.enddatum = {
+                            lt: today,
+                        };
+                    } else if (zeitraum === "letzte30") {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(today.getDate() - 30);
+                        filter.startdatum = {
+                            gte: thirtyDaysAgo,
+                        };
+                    }
+                }
 
-        // Krankmeldungen aus der Datenbank laden
-        const krankmeldungen = await prisma.krankmeldung.findMany({
-            where: filter,
-            orderBy: { startdatum: "desc" },
-            take: limit,
-            include: {
-                mitarbeiter: {
-                    select: {
-                        vorname: true,
-                        nachname: true,
-                        personalnummer: true,
+                // Parallele Datenbankabfragen für bessere Performance
+                const [krankmeldungen, totalCount, aktiveCount, abgeschlosseneCount, stornierteCount, gesamtCount] =
+                    await Promise.all([
+                        // Krankmeldungen laden mit Optimierung der selektierten Felder
+                        prisma.krankmeldung.findMany({
+                            where: filter,
+                            orderBy: { startdatum: "desc" },
+                            take: limit,
+                            include: {
+                                mitarbeiter: {
+                                    select: {
+                                        vorname: true,
+                                        nachname: true,
+                                        personalnummer: true,
+                                    },
+                                },
+                                erstelltVon: {
+                                    select: {
+                                        vorname: true,
+                                        nachname: true,
+                                        email: true,
+                                    },
+                                },
+                            },
+                        }),
+                        prisma.krankmeldung.count({ where: filter }),
+                        prisma.krankmeldung.count({ where: { status: "aktiv" } }),
+                        prisma.krankmeldung.count({ where: { status: "abgeschlossen" } }),
+                        prisma.krankmeldung.count({ where: { status: "storniert" } }),
+                        prisma.krankmeldung.count(),
+                    ]);
+
+                return {
+                    krankmeldungen,
+                    meta: {
+                        total: totalCount,
+                        count: krankmeldungen.length,
+                        filter: {
+                            mitarbeiterId: mitarbeiterId || null,
+                            status: status || null,
+                            startDate: startDate || null,
+                            endDate: endDate || null,
+                            zeitraum: zeitraum || null,
+                        },
                     },
-                },
-                erstelltVon: {
-                    select: {
-                        vorname: true,
-                        nachname: true,
-                        email: true,
-                    },
-                },
+                    counts: {
+                        aktiv: aktiveCount,
+                        abgeschlossen: abgeschlosseneCount,
+                        storniert: stornierteCount,
+                        total: gesamtCount
+                    }
+                };
             },
-        });
+            15000 // 15 Sekunden TTL für Listen
+        );
 
-        // Gesamtanzahl der gefilterten Krankmeldungen ermitteln
-        const totalCount = await prisma.krankmeldung.count({
-            where: filter,
-        });
-
-        // Zählung der Krankmeldungen nach Status für die Tabs
-        const [aktiveCount, abgeschlosseneCount, stornierteCount, gesamtCount] = await Promise.all([
-            prisma.krankmeldung.count({ where: { status: "aktiv" } }),
-            prisma.krankmeldung.count({ where: { status: "abgeschlossen" } }),
-            prisma.krankmeldung.count({ where: { status: "storniert" } }),
-            prisma.krankmeldung.count(),
-        ]);
-
-        // Erfolgreiche Antwort mit Krankmeldungen und Metadaten
-        return NextResponse.json({
-            krankmeldungen: krankmeldungen, // Konsistente Bezeichnung für Frontend
-            meta: {
-                total: totalCount,
-                count: krankmeldungen.length,
-                filter: {
-                    mitarbeiterId: mitarbeiterId || null,
-                    status: status || null,
-                    startDate: startDate || null,
-                    endDate: endDate || null,
-                    zeitraum: zeitraum || null,
-                },
-            },
-            counts: {
-                aktiv: aktiveCount,
-                abgeschlossen: abgeschlosseneCount,
-                storniert: stornierteCount,
-                total: gesamtCount
-            }
-        });
+        // Response mit Cache-Control-Header
+        const response = NextResponse.json(result);
+        response.headers.set('Cache-Control', 'private, max-age=15');
+        return response;
     } catch (error) {
         console.error("Fehler beim Abrufen der Krankmeldungen:", error);
         return NextResponse.json(
@@ -195,9 +208,10 @@ export async function POST(request: NextRequest) {
 
         const data = validationResult.data;
 
-        // Prüfen, ob der referenzierte Mitarbeiter existiert
+        // Prüfen, ob der referenzierte Mitarbeiter existiert (mit minimaler Selektion für Performance)
         const mitarbeiter = await prisma.mitarbeiter.findUnique({
             where: { id: data.mitarbeiterId },
+            select: { id: true }
         });
 
         if (!mitarbeiter) {
@@ -275,6 +289,16 @@ export async function POST(request: NextRequest) {
 
             return newKrankmeldung;
         });
+
+        // Cache für Listen invalidieren
+        if (global.__prismaCache) {
+            // Alle Krankmeldungslisten-Caches löschen
+            for (const key of global.__prismaCache.keys()) {
+                if (key.startsWith('krankmeldungen-list-')) {
+                    global.__prismaCache.delete(key);
+                }
+            }
+        }
 
         // Erfolgreiche Antwort mit neu erstellter Krankmeldung
         return NextResponse.json({

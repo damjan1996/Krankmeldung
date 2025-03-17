@@ -119,7 +119,7 @@ export function KrankmeldungenTabelle({
                                           className,
                                           onStatusChange,
                                       }: KrankmeldungenTabelleProps) {
-    const router = useRouter();
+    const _router = useRouter();
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const [data, setData] = useState<KrankmeldungenTabelleDaten[]>(initialData);
@@ -406,7 +406,7 @@ export function KrankmeldungenTabelle({
                 );
             },
         },
-    ], [isUpdating, handleStatusChange, formatDate]);
+    ], [isUpdating, handleStatusChange, formatDate, showActions]);
 
     /**
      * Tabelleninstanz erstellen

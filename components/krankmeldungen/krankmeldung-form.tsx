@@ -68,13 +68,14 @@ interface Mitarbeiter {
 
 /**
  * Definiere die Daten für bestehende Krankmeldungen (optional)
+ * Unterstützt sowohl String- als auch Date-Formate für die Kompatibilität
  */
 interface KrankmeldungData {
     id?: string;
     mitarbeiterId: string;
-    startdatum: Date;
-    enddatum: Date;
-    arztbesuchDatum?: Date | null;
+    startdatum: string | Date;
+    enddatum: string | Date;
+    arztbesuchDatum?: string | Date | null;
     notizen?: string | null;
     status: "aktiv" | "abgeschlossen" | "storniert";
 }
@@ -130,6 +131,15 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 /**
+ * Hilfsfunktion zur Konvertierung von String oder Date in ein Date-Objekt
+ */
+function ensureDate(date: string | Date | undefined | null): Date | null {
+    if (!date) return null;
+    if (date instanceof Date) return date;
+    return new Date(date);
+}
+
+/**
  * Formular-Komponente für die Erstellung und Bearbeitung von Krankmeldungen
  */
 export function KrankmeldungForm({
@@ -149,13 +159,18 @@ export function KrankmeldungForm({
         const today = new Date();
 
         if (initialData) {
+            // Stelle sicher, dass alle Datumswerte korrekte Date-Objekte sind
+            const startDate = ensureDate(initialData.startdatum);
+            const endDate = ensureDate(initialData.enddatum);
+            const doctorDate = ensureDate(initialData.arztbesuchDatum);
+
             return {
-                ...initialData,
-                startdatum: new Date(initialData.startdatum),
-                enddatum: new Date(initialData.enddatum),
-                arztbesuchDatum: initialData.arztbesuchDatum
-                    ? new Date(initialData.arztbesuchDatum)
-                    : null,
+                mitarbeiterId: initialData.mitarbeiterId,
+                startdatum: startDate || today,
+                enddatum: endDate || addDays(today, 7),
+                arztbesuchDatum: doctorDate,
+                notizen: initialData.notizen || "",
+                status: initialData.status || "aktiv",
             };
         }
 
@@ -177,8 +192,6 @@ export function KrankmeldungForm({
 
     // Werte aus dem Formular
     const currentValues = form.watch();
-
-    // Ungenutzte Funktion für Datumsprüfungen entfernt
 
     /**
      * Form-Daten absenden
@@ -203,6 +216,7 @@ export function KrankmeldungForm({
                     ? format(values.arztbesuchDatum, "yyyy-MM-dd")
                     : null,
                 erstelltVonId: userId,
+                aktualisiertVonId: isEditing ? userId : undefined
             };
 
             // API-Anfrage senden
@@ -244,8 +258,12 @@ export function KrankmeldungForm({
             if (onSuccess) {
                 onSuccess();
             } else {
-                // Zurück zur Übersicht navigieren
-                router.push("/krankmeldungen");
+                // Bei Bearbeitung zur Detailseite navigieren, sonst zur Übersicht
+                if (isEditing && initialData?.id) {
+                    router.push(`/krankmeldungen/${initialData.id}`);
+                } else {
+                    router.push("/krankmeldungen");
+                }
                 router.refresh();
             }
         } catch (error) {

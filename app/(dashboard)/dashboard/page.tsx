@@ -164,24 +164,6 @@ export default async function DashboardPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-
-            {/* Schnellzugriff auf wichtige Funktionen */}
-            <Card className="mt-4">
-                <CardHeader className="py-2">
-                    <CardTitle>Schnellzugriff</CardTitle>
-                </CardHeader>
-                <CardContent className="flex gap-4 pb-4">
-                    <Link href="/krankmeldungen/neu">
-                        <Button size="sm">Neue Krankmeldung</Button>
-                    </Link>
-                    <Link href="/krankmeldungen">
-                        <Button variant="outline" size="sm">Krankmeldungen verwalten</Button>
-                    </Link>
-                    <Link href="/mitarbeiter">
-                        <Button variant="outline" size="sm">Mitarbeiter anzeigen</Button>
-                    </Link>
-                </CardContent>
-            </Card>
         </div>
     );
 }
