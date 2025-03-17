@@ -95,7 +95,7 @@ export default async function DashboardPage() {
     ]);
 
     return (
-        <div className="flex flex-col h-[calc(100vh-9rem)] overflow-hidden">
+        <div className="flex flex-col md:h-[calc(100vh-9rem)] overflow-y-auto">
             {/* Willkommensbanner mit Benutzername */}
             <WelcomeBanner
                 userName={session?.user?.name || "Benutzer"}
@@ -125,21 +125,21 @@ export default async function DashboardPage() {
             </div>
 
             {/* Tabs für "Aktive Krankmeldungen" und "Letzte Aktivitäten" */}
-            <Tabs defaultValue="krankmeldungen" className="mt-4 flex-1 overflow-hidden">
+            <Tabs defaultValue="krankmeldungen" className="mt-4 flex-1">
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                     <TabsTrigger value="krankmeldungen">Aktive Krankmeldungen</TabsTrigger>
                     <TabsTrigger value="aktivitaeten">Letzte Aktivitäten</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="krankmeldungen" className="h-full overflow-hidden">
-                    <Card className="flex flex-col h-full overflow-hidden">
+                <TabsContent value="krankmeldungen" className="h-auto md:h-full">
+                    <Card className="flex flex-col md:h-full">
                         <CardHeader className="pb-2">
                             <CardTitle>Aktive Krankmeldungen</CardTitle>
                             <CardDescription>
                                 Die neuesten laufenden Krankmeldungen im Überblick
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-1 overflow-auto pb-2">
+                        <CardContent className="flex-1 md:overflow-auto pb-2">
                             <AktiveKrankmeldungen krankmeldungen={aktiveKrankmeldungen} />
                         </CardContent>
                         <div className="px-6 pb-4 pt-1 mt-auto">
@@ -150,15 +150,15 @@ export default async function DashboardPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="aktivitaeten" className="h-full overflow-hidden">
-                    <Card className="flex flex-col h-full overflow-hidden">
+                <TabsContent value="aktivitaeten" className="h-auto md:h-full">
+                    <Card className="flex flex-col md:h-full">
                         <CardHeader className="pb-2">
                             <CardTitle>Letzte Aktivitäten</CardTitle>
                             <CardDescription>
                                 Die neuesten Änderungen im System
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-1 overflow-auto pb-2">
+                        <CardContent className="flex-1 md:overflow-auto pb-2">
                             <RecentActivity activities={recentActivity} maxHeight={undefined} />
                         </CardContent>
                     </Card>
