@@ -2,10 +2,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
+import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
-import { z } from "zod";
+import { prisma, fetchWithCache } from "@/lib/prisma";
+
+// Cache-Schlüssel für Krankmeldungen erstellen
+const getCacheKey = (id: string) => `krankmeldung-${id}`;
 
 /**
  * Schema für Aktualisierung einer Krankmeldung
@@ -20,7 +23,7 @@ const updateKrankmeldungSchema = z.object({
 });
 
 /**
- * GET-Handler: Einzelne Krankmeldung abrufen
+ * GET-Handler: Einzelne Krankmeldung abrufen mit Caching
  */
 export async function GET(
     request: NextRequest,
@@ -38,41 +41,47 @@ export async function GET(
         }
 
         // Krankmeldungs-ID aus Parametern extrahieren
-        const params = await context.params;
-        const { id } = params;
+        const id = context.params.id;
+        const cacheKey = getCacheKey(id);
 
-        // Krankmeldung aus der Datenbank abrufen
-        const krankmeldung = await prisma.krankmeldung.findUnique({
-            where: { id },
-            include: {
-                mitarbeiter: {
-                    select: {
-                        id: true,
-                        vorname: true,
-                        nachname: true,
-                        personalnummer: true,
-                        position: true,
-                        istAktiv: true,
+        // Krankmeldung mit Caching abrufen
+        const krankmeldung = await fetchWithCache(
+            cacheKey,
+            async () => {
+                return prisma.krankmeldung.findUnique({
+                    where: { id },
+                    include: {
+                        mitarbeiter: {
+                            select: {
+                                id: true,
+                                vorname: true,
+                                nachname: true,
+                                personalnummer: true,
+                                position: true,
+                                istAktiv: true,
+                            },
+                        },
+                        erstelltVon: {
+                            select: {
+                                id: true,
+                                email: true,
+                                vorname: true,
+                                nachname: true,
+                            },
+                        },
+                        aktualisiertVon: {
+                            select: {
+                                id: true,
+                                email: true,
+                                vorname: true,
+                                nachname: true,
+                            },
+                        },
                     },
-                },
-                erstelltVon: {
-                    select: {
-                        id: true,
-                        email: true,
-                        vorname: true,
-                        nachname: true,
-                    },
-                },
-                aktualisiertVon: {
-                    select: {
-                        id: true,
-                        email: true,
-                        vorname: true,
-                        nachname: true,
-                    },
-                },
+                });
             },
-        });
+            30000 // 30 Sekunden TTL
+        );
 
         // Wenn keine Krankmeldung gefunden wurde, 404 zurückgeben
         if (!krankmeldung) {
@@ -82,8 +91,10 @@ export async function GET(
             );
         }
 
-        // Erfolgreiche Antwort mit Krankmeldungsdaten
-        return NextResponse.json(krankmeldung);
+        // Response mit Cache-Control-Header für optimale Browser-Caching
+        const response = NextResponse.json(krankmeldung);
+        response.headers.set('Cache-Control', 'private, max-age=30');
+        return response;
     } catch (error) {
         console.error("Fehler beim Abrufen der Krankmeldung:", error);
         return NextResponse.json(
@@ -112,8 +123,7 @@ export async function PUT(
         }
 
         // Krankmeldungs-ID aus Parametern extrahieren
-        const params = await context.params;
-        const { id } = params;
+        const id = context.params.id;
 
         // Anfragedaten parsen
         const rawData = await request.json();
@@ -130,9 +140,18 @@ export async function PUT(
 
         const data = validationResult.data;
 
-        // Prüfen, ob Krankmeldung existiert
+        // Prüfen, ob Krankmeldung existiert (mit minimaler Selektion für Performance)
         const existingKrankmeldung = await prisma.krankmeldung.findUnique({
             where: { id },
+            select: {
+                id: true,
+                status: true,
+                mitarbeiterId: true,
+                startdatum: true,
+                enddatum: true,
+                arztbesuchDatum: true,
+                notizen: true
+            }
         });
 
         if (!existingKrankmeldung) {
@@ -208,6 +227,9 @@ export async function PUT(
             return updatedKrankmeldung;
         });
 
+        // Cache invalidieren nach Update
+        global.__prismaCache?.delete(getCacheKey(id));
+
         // Erfolgreiche Antwort mit aktualisierten Daten
         return NextResponse.json({
             message: `Krankmeldung erfolgreich aktualisiert${statusChanged ? ` (Status: ${data.status})` : ''}`,
@@ -249,12 +271,12 @@ export async function DELETE(
         }
 
         // Krankmeldungs-ID aus Parametern extrahieren
-        const params = await context.params;
-        const { id } = params;
+        const id = context.params.id;
 
-        // Prüfen, ob Krankmeldung existiert
+        // Prüfen, ob Krankmeldung existiert (mit minimaler Selektion für Performance)
         const existingKrankmeldung = await prisma.krankmeldung.findUnique({
             where: { id },
+            select: { id: true, status: true }
         });
 
         if (!existingKrankmeldung) {
@@ -296,6 +318,9 @@ export async function DELETE(
                 },
             });
         });
+
+        // Cache invalidieren nach Stornierung
+        global.__prismaCache?.delete(getCacheKey(id));
 
         // Erfolgreiche Antwort
         return NextResponse.json({

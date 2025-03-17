@@ -1,14 +1,12 @@
 // app/(dashboard)/krankmeldungen/[id]/bearbeiten/page.tsx
 
 import { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 
-import { Button } from "@/components/ui/button";
-import { KrankmeldungForm } from "@/components/krankmeldungen/krankmeldung-form";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import KrankmeldungBearbeitenClient from "./client";
 
 export const metadata: Metadata = {
     title: "Krankmeldung bearbeiten - GFU Krankmeldungssystem",
@@ -27,8 +25,9 @@ export default async function KrankmeldungBearbeitenPage({ params }: any) {
         redirect("/login");
     }
 
-    // Krankmeldungs-ID aus den URL-Parametern extrahieren
-    const { id } = params;
+    // Krankmeldungs-ID aus den URL-Parametern extrahieren (mit await)
+    const paramsObj = await params;
+    const id = paramsObj.id;
 
     try {
         // Krankmeldungsdaten aus der Datenbank laden
@@ -61,41 +60,26 @@ export default async function KrankmeldungBearbeitenPage({ params }: any) {
             ? krankmeldung.status as "aktiv" | "abgeschlossen" | "storniert"
             : "aktiv"; // Fallback, falls ungültiger Status
 
-        // Krankmeldungsdaten für das Formular aufbereiten
+        // Krankmeldungsdaten für das Formular aufbereiten und Datumsformate für die Client-Komponente korrigieren
         const initialData = {
             id: krankmeldung.id,
             mitarbeiterId: krankmeldung.mitarbeiterId,
-            startdatum: krankmeldung.startdatum,
-            enddatum: krankmeldung.enddatum,
-            arztbesuchDatum: krankmeldung.arztbesuchDatum || undefined,
+            startdatum: krankmeldung.startdatum.toISOString().split('T')[0], // Konvertieren zu YYYY-MM-DD String
+            enddatum: krankmeldung.enddatum.toISOString().split('T')[0], // Konvertieren zu YYYY-MM-DD String
+            arztbesuchDatum: krankmeldung.arztbesuchDatum ?
+                krankmeldung.arztbesuchDatum.toISOString().split('T')[0] : undefined, // Konvertieren zu YYYY-MM-DD String wenn vorhanden
             notizen: krankmeldung.notizen || "",
             status: validStatus,
         };
 
+        // Daten an die Client-Komponente übergeben
         return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Krankmeldung bearbeiten</h1>
-                        <p className="text-muted-foreground">
-                            Aktualisieren Sie die Daten der Krankmeldung für {krankmeldung.mitarbeiter.vorname} {krankmeldung.mitarbeiter.nachname}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link href={`/krankmeldungen/${id}`}>
-                            <Button variant="outline">Abbrechen</Button>
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Krankmeldungsformular mit vorausgefüllten Daten */}
-                <KrankmeldungForm
-                    mitarbeiter={mitarbeiter}
-                    userId={session.user.id}
-                    initialData={initialData}
-                    isEditing={true}
-                />
-            </div>
+            <KrankmeldungBearbeitenClient
+                krankmeldung={krankmeldung}
+                mitarbeiter={mitarbeiter}
+                initialData={initialData}
+                userId={session.user.id}
+            />
         );
     } catch (error) {
         console.error("Fehler beim Laden der Krankmeldung:", error);

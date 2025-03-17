@@ -20,6 +20,10 @@ const nextConfig = {
         }
         return config;
     },
+    env: {
+        // Umgebungsvariablen für Prisma
+        PRISMA_LOG_LEVEL: process.env.NODE_ENV === 'production' ? 'error' : 'query,error,warn',
+    },
     async headers() {
         return [
             {
@@ -48,7 +52,6 @@ const nextConfig = {
                 destination: '/',
                 permanent: true,
             },
-            // Fehlerhafte favicon-Umleitung entfernt
         ];
     },
 };

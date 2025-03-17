@@ -5,7 +5,11 @@ import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma, fetchWithCache } from "@/lib/prisma";
+
+// Cache-Schlüssel für Mitarbeiterlisten
+const getListCacheKey = (params: URLSearchParams) =>
+    `mitarbeiter-list-${Array.from(params.entries()).sort().join('-')}`;
 
 /**
  * Schema für die Erstellung eines neuen Mitarbeiters
@@ -19,7 +23,7 @@ const createMitarbeiterSchema = z.object({
 });
 
 /**
- * GET-Handler: Liste von Mitarbeitern abrufen mit optionaler Filterung
+ * GET-Handler: Liste von Mitarbeitern abrufen mit optionaler Filterung und Caching
  */
 export async function GET(request: NextRequest) {
     try {
@@ -35,73 +39,88 @@ export async function GET(request: NextRequest) {
 
         // Query-Parameter extrahieren für Filterung
         const searchParams = request.nextUrl.searchParams;
+        const cacheKey = getListCacheKey(searchParams);
+
         const aktiv = searchParams.get("aktiv") !== "false"; // Standard ist "true"
         const suche = searchParams.get("suche") || "";
         const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined;
         const includeKrankmeldungen = searchParams.get("includeKrankmeldungen") === "true";
 
-        // Filter für Datenbankabfrage aufbauen
-        let filter: any = {
-            istAktiv: aktiv,
-        };
+        // Daten mit Caching abrufen
+        const result = await fetchWithCache(
+            cacheKey,
+            async () => {
+                // Filter für Datenbankabfrage aufbauen
+                let filter: any = {
+                    istAktiv: aktiv,
+                };
 
-        // Suchfilter hinzufügen, wenn vorhanden
-        if (suche) {
-            filter = {
-                ...filter,
-                OR: [
-                    { vorname: { contains: suche, mode: 'insensitive' } },
-                    { nachname: { contains: suche, mode: 'insensitive' } },
-                    { personalnummer: { contains: suche, mode: 'insensitive' } },
-                    { position: { contains: suche, mode: 'insensitive' } },
-                ],
-            };
-        }
+                // Suchfilter hinzufügen, wenn vorhanden
+                if (suche) {
+                    filter = {
+                        ...filter,
+                        OR: [
+                            { vorname: { contains: suche, mode: 'insensitive' } },
+                            { nachname: { contains: suche, mode: 'insensitive' } },
+                            { personalnummer: { contains: suche, mode: 'insensitive' } },
+                            { position: { contains: suche, mode: 'insensitive' } },
+                        ],
+                    };
+                }
 
-        // Include-Option für Krankmeldungen definieren
-        const include: any = {};
-        if (includeKrankmeldungen) {
-            include.krankmeldungen = {
-                where: { status: "aktiv" },
-                select: {
-                    id: true,
-                    startdatum: true,
-                    enddatum: true,
-                    status: true,
-                },
-                orderBy: { startdatum: "desc" },
-            };
-        }
+                // Include-Option für Krankmeldungen definieren
+                const include: any = {};
+                if (includeKrankmeldungen) {
+                    include.krankmeldungen = {
+                        where: { status: "aktiv" },
+                        select: {
+                            id: true,
+                            startdatum: true,
+                            enddatum: true,
+                            status: true,
+                        },
+                        orderBy: { startdatum: "desc" },
+                    };
+                }
 
-        // Mitarbeiter aus der Datenbank laden
-        const mitarbeiter = await prisma.mitarbeiter.findMany({
-            where: filter,
-            orderBy: [
-                { nachname: "asc" },
-                { vorname: "asc" },
-            ],
-            take: limit,
-            include: Object.keys(include).length ? include : undefined,
-        });
+                // Parallele Datenbankabfragen für bessere Performance
+                const [mitarbeiter, totalCount] = await Promise.all([
+                    // Mitarbeiter laden
+                    prisma.mitarbeiter.findMany({
+                        where: filter,
+                        orderBy: [
+                            { nachname: "asc" },
+                            { vorname: "asc" },
+                        ],
+                        take: limit,
+                        include: Object.keys(include).length ? include : undefined,
+                    }),
+                    // Gesamtanzahl ermitteln
+                    prisma.mitarbeiter.count({
+                        where: filter,
+                    }),
+                ]);
 
-        // Gesamtanzahl der gefilterten Mitarbeiter ermitteln
-        const totalCount = await prisma.mitarbeiter.count({
-            where: filter,
-        });
-
-        // Erfolgreiche Antwort mit Mitarbeitern und Metadaten
-        return NextResponse.json({
-            data: mitarbeiter,
-            meta: {
-                total: totalCount,
-                count: mitarbeiter.length,
-                filter: {
-                    aktiv,
-                    suche: suche || null,
-                    includeKrankmeldungen: includeKrankmeldungen || false,
-                },
+                return {
+                    data: mitarbeiter,
+                    meta: {
+                        total: totalCount,
+                        count: mitarbeiter.length,
+                        filter: {
+                            aktiv,
+                            suche: suche || null,
+                            includeKrankmeldungen: includeKrankmeldungen || false,
+                        },
+                    },
+                };
             },
-        });
+            15000 // 15 Sekunden TTL für Listen
+        );
+
+        // Response mit Cache-Control-Header
+        const response = NextResponse.json(result);
+        response.headers.set('Cache-Control', 'private, max-age=15');
+        return response;
     } catch (error) {
         console.error("Fehler beim Abrufen der Mitarbeiter:", error);
         return NextResponse.json(
@@ -149,9 +168,10 @@ export async function POST(request: NextRequest) {
 
         const data = validationResult.data;
 
-        // Prüfen, ob die Personalnummer bereits vergeben ist
+        // Prüfen, ob die Personalnummer bereits vergeben ist (mit minimalem Select für Performance)
         const existingPersonalnummer = await prisma.mitarbeiter.findUnique({
             where: { personalnummer: data.personalnummer },
+            select: { id: true }
         });
 
         if (existingPersonalnummer) {
@@ -191,6 +211,16 @@ export async function POST(request: NextRequest) {
 
             return newMitarbeiter;
         });
+
+        // Cache für Listen invalidieren
+        if (global.__prismaCache) {
+            // Alle Mitarbeiterlisten-Caches löschen
+            for (const key of global.__prismaCache.keys()) {
+                if (key.startsWith('mitarbeiter-list-')) {
+                    global.__prismaCache.delete(key);
+                }
+            }
+        }
 
         // Erfolgreiche Antwort mit neu erstelltem Mitarbeiter
         return NextResponse.json({

@@ -32,12 +32,10 @@ import {
     LogOut,
     Menu,
     Settings,
-    // Removing unused import
+    // Removing unused imports and keeping the ones that are used
     FileWarning,
     ArrowLeftRight,
     Globe,
-    LifeBuoy,
-    HelpCircle,
     Inbox
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";

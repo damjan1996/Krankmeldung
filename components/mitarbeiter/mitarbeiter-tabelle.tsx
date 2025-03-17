@@ -50,7 +50,8 @@ import {
     Search,
     SlidersHorizontal,
     UserCheck,
-    UserX
+    UserX,
+    Loader2
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import {
@@ -70,8 +71,11 @@ interface MitarbeiterTabelleDaten {
     id: string;
     personalnummer: string;
     name: string;
+    vorname?: string;
+    nachname?: string;
     position?: string;
     abteilung?: string;
+    istAktiv?: boolean;
     status: "aktiv" | "inaktiv";
     aktiveKrankmeldungen: number;
 }
@@ -85,6 +89,7 @@ interface MitarbeiterTabelleProps {
     showPagination?: boolean;
     defaultPageSize?: number;
     className?: string;
+    isLoading?: boolean;
 }
 
 /**
@@ -326,6 +331,7 @@ export function MitarbeiterTabelle({
                                        showPagination = true,
                                        defaultPageSize = 10,
                                        className: _className, // Underscore prefix to mark as intentionally unused
+                                       isLoading = false,
                                    }: MitarbeiterTabelleProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -557,22 +563,48 @@ export function MitarbeiterTabelle({
     const table = useReactTable(tableOptions);
 
     /**
-     * Status-Filter anwenden (über URL-Parameter)
+     * Helper function to create filter links (not used but kept with _ prefix)
      */
-    const createQueryString = (name: string, value: string) => {
+    const _updateSearchParam = (key: string, value: string) => {
         const params = new URLSearchParams(searchParams.toString());
-        params.set(name, value);
-        return params.toString();
+        params.set(key, value);
+        return `${pathname}?${params.toString()}`;
+    };
+
+    // Status aus URL extrahieren für aktive Filteroption
+    const currentStatus = searchParams.get('status') || 'aktiv';
+
+    // Suchtext aus URL extrahieren
+    const currentSearch = searchParams.get('suche') || '';
+
+    /**
+     * Status-Filter-Link-Funktion
+     */
+    const getStatusFilterLink = (status: string | null) => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        if (!status || status === 'aktiv') {
+            params.delete('status');
+        } else {
+            params.set('status', status);
+        }
+
+        return `${pathname}?${params.toString()}`;
     };
 
     /**
-     * Helper function to create filter links
+     * Suchfunktion, die die URL aktualisiert
      */
-    const getFilterLink = (filterValue: string | null) => {
-        if (!filterValue) {
-            return pathname;
+    const handleSearch = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        if (value) {
+            params.set('suche', value);
+        } else {
+            params.delete('suche');
         }
-        return `${pathname}?${createQueryString("status", filterValue)}`;
+
+        router.push(`${pathname}?${params.toString()}`);
     };
 
     return (
@@ -584,11 +616,16 @@ export function MitarbeiterTabelle({
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Nach Namen oder Personalnummer suchen..."
-                        value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-                        onChange={(event) => {
-                            // Suche in Name und Personalnummer gleichzeitig
-                            table.getColumn("name")?.setFilterValue(event.target.value);
-                            table.getColumn("personalnummer")?.setFilterValue(event.target.value);
+                        defaultValue={currentSearch}
+                        onChange={(e) => {
+                            if (e.target.value === '') {
+                                handleSearch('');
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleSearch(e.currentTarget.value);
+                            }
                         }}
                         className="pl-8"
                     />
@@ -601,23 +638,18 @@ export function MitarbeiterTabelle({
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" className="ml-auto h-8 gap-1">
                                 <Filter className="h-3.5 w-3.5" />
-                                <span>Status</span>
+                                <span>Status: {currentStatus === 'inaktiv' ? 'Inaktiv' : 'Aktiv'}</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Status filtern</DropdownMenuLabel>
                             <DropdownMenuItem asChild>
-                                <Link href={getFilterLink(null)}>
-                                    Alle
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={getFilterLink("aktiv")}>
+                                <Link href={getStatusFilterLink(null)}>
                                     Aktiv
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href={getFilterLink("inaktiv")}>
+                                <Link href={getStatusFilterLink('inaktiv')}>
                                     Inaktiv
                                 </Link>
                             </DropdownMenuItem>
@@ -670,17 +702,22 @@ export function MitarbeiterTabelle({
                 </div>
             </div>
 
-            {/* Tabelle */}
-            <div className="rounded-md border">
+            {/* Tabelle mit Ladezustand */}
+            <div className="rounded-md border relative">
+                {isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                )}
                 <DataTable
                     table={table}
                     columns={columns}
-                    noDataMessage="Keine Mitarbeiter gefunden."
+                    noDataMessage={isLoading ? "Daten werden geladen..." : "Keine Mitarbeiter gefunden."}
                 />
             </div>
 
             {/* Paginierung */}
-            {showPagination && (
+            {showPagination && data.length > 0 && (
                 <TablePagination table={table} />
             )}
 
