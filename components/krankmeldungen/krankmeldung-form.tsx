@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format, addDays, isAfter, isBefore, isEqual, isWeekend, differenceInDays } from "date-fns";
 import { de } from "date-fns/locale";
@@ -12,6 +12,7 @@ import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import {
     Form,
     FormControl,
@@ -21,7 +22,6 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
-// Ungenutzter Import entfernt: Input
 import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
@@ -41,7 +41,10 @@ import {
     Loader2,
     Check,
     AlertCircle,
-    Info
+    Info,
+    Search,
+    User,
+    X
 } from "lucide-react";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -153,6 +156,9 @@ export function KrankmeldungForm({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+    const [showMitarbeiterSearch, setShowMitarbeiterSearch] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedMitarbeiter, setSelectedMitarbeiter] = useState<Mitarbeiter | null>(null);
 
     // Standard-Werte für neue Krankmeldung
     const getDefaultValues = (): Partial<FormValues> => {
@@ -192,6 +198,29 @@ export function KrankmeldungForm({
 
     // Werte aus dem Formular
     const currentValues = form.watch();
+
+    // Effekt zum Setzen des ausgewählten Mitarbeiters
+    useEffect(() => {
+        if (currentValues.mitarbeiterId) {
+            const foundMitarbeiter = mitarbeiter.find(m => m.id === currentValues.mitarbeiterId);
+            if (foundMitarbeiter) {
+                setSelectedMitarbeiter(foundMitarbeiter);
+            }
+        }
+    }, [currentValues.mitarbeiterId, mitarbeiter]);
+
+    // Gefilterte Mitarbeiterliste basierend auf Suchbegriff
+    const filteredMitarbeiter = mitarbeiter.filter(m => {
+        if (!searchTerm) return true;
+
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            m.vorname.toLowerCase().includes(searchLower) ||
+            m.nachname.toLowerCase().includes(searchLower) ||
+            m.personalnummer.toLowerCase().includes(searchLower) ||
+            `${m.vorname} ${m.nachname}`.toLowerCase().includes(searchLower)
+        );
+    });
 
     /**
      * Form-Daten absenden
@@ -291,6 +320,20 @@ export function KrankmeldungForm({
         }
     };
 
+    // Mitarbeiter auswählen und Popover schließen
+    const handleSelectMitarbeiter = (mitarbeiter: Mitarbeiter) => {
+        form.setValue("mitarbeiterId", mitarbeiter.id);
+        setSelectedMitarbeiter(mitarbeiter);
+        setShowMitarbeiterSearch(false);
+        setSearchTerm("");
+    };
+
+    // Mitarbeiterauswahl zurücksetzen
+    const handleResetMitarbeiter = () => {
+        form.setValue("mitarbeiterId", "");
+        setSelectedMitarbeiter(null);
+    };
+
     // Berechne die Anzahl der Tage zwischen Start- und Enddatum für die Dauer-Anzeige
     const calculateDuration = () => {
         if (!currentValues.startdatum || !currentValues.enddatum) return null;
@@ -300,32 +343,110 @@ export function KrankmeldungForm({
     return (
         <>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    {/* Mitarbeiter-Auswahl */}
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-4xl mx-auto">
+                    {/* Mitarbeiter-Auswahl mit Suchfunktion */}
                     <FormField
                         control={form.control}
                         name="mitarbeiterId"
                         render={({ field }) => (
-                            <FormItem>
+                            <FormItem className="w-full">
                                 <FormLabel>Mitarbeiter</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                    disabled={isSubmitting || (isEditing && initialData?.id !== undefined)}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Mitarbeiter auswählen" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {mitarbeiter.map((m) => (
-                                            <SelectItem key={m.id} value={m.id}>
-                                                {m.vorname} {m.nachname} ({m.personalnummer})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="relative w-full">
+                                    {selectedMitarbeiter ? (
+                                        <div className="flex items-center justify-between px-4 border rounded-md w-full h-10 text-sm font-medium">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <User className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                                                <span className="truncate">
+                                                    {selectedMitarbeiter.vorname} {selectedMitarbeiter.nachname} ({selectedMitarbeiter.personalnummer})
+                                                </span>
+                                            </div>
+                                            {!isEditing && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="flex-shrink-0 h-8 w-8 p-0"
+                                                    disabled={isSubmitting || (isEditing && initialData?.id !== undefined)}
+                                                    onClick={handleResetMitarbeiter}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <Popover
+                                            open={showMitarbeiterSearch}
+                                            onOpenChange={setShowMitarbeiterSearch}
+                                        >
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className="w-full justify-between h-10 font-normal text-sm"
+                                                        disabled={isSubmitting || (isEditing && initialData?.id !== undefined)}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <User className="h-4 w-4 text-muted-foreground" />
+                                                            Mitarbeiter auswählen
+                                                        </span>
+                                                        <Search className="h-4 w-4 text-muted-foreground ml-2" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[400px] p-0" align="start" side="bottom">
+                                                <div className="p-2 border-b">
+                                                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted">
+                                                        <Search className="h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            placeholder="Suche nach Namen oder Personalnummer..."
+                                                            value={searchTerm}
+                                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                                            className="h-8 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                        />
+                                                        {searchTerm && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => setSearchTerm("")}
+                                                                className="h-6 w-6 p-0"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="max-h-[250px] overflow-y-auto">
+                                                    {filteredMitarbeiter.length === 0 ? (
+                                                        <div className="py-6 text-center text-sm text-muted-foreground">
+                                                            Keine Mitarbeiter gefunden
+                                                        </div>
+                                                    ) : (
+                                                        <ul className="py-2">
+                                                            {filteredMitarbeiter.map((m) => (
+                                                                <li
+                                                                    key={m.id}
+                                                                    className="px-3 py-2 text-sm cursor-pointer hover:bg-muted flex items-center justify-between"
+                                                                    onClick={() => handleSelectMitarbeiter(m)}
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <User className="h-4 w-4 text-muted-foreground" />
+                                                                        <span className="font-medium">{m.vorname} {m.nachname}</span>
+                                                                    </div>
+                                                                    <span className="text-muted-foreground">{m.personalnummer}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    )}
+                                    <input
+                                        type="hidden"
+                                        {...field}
+                                    />
+                                </div>
                                 <FormDescription>
                                     Wählen Sie den Mitarbeiter aus, für den die Krankmeldung erfasst werden soll.
                                 </FormDescription>
@@ -335,7 +456,7 @@ export function KrankmeldungForm({
                     />
 
                     {/* Zeitraum */}
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Startdatum */}
                         <FormField
                             control={form.control}
@@ -347,11 +468,8 @@ export function KrankmeldungForm({
                                         <PopoverTrigger asChild>
                                             <FormControl>
                                                 <Button
-                                                    variant={"outline"}
-                                                    className={cn(
-                                                        "w-full pl-3 text-left font-normal",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
+                                                    variant="outline"
+                                                    className="w-full pl-3 text-left font-normal h-10"
                                                     disabled={isSubmitting}
                                                 >
                                                     {field.value ? (
@@ -385,7 +503,7 @@ export function KrankmeldungForm({
                                         Der erste Tag der Krankmeldung.
                                     </FormDescription>
                                     {currentValues.startdatum && isWeekend(currentValues.startdatum) && (
-                                        <Alert variant="warning" className="mt-2">
+                                        <Alert variant="warning" className="mt-2 text-sm">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertTitle>Hinweis</AlertTitle>
                                             <AlertDescription>
@@ -409,11 +527,8 @@ export function KrankmeldungForm({
                                         <PopoverTrigger asChild>
                                             <FormControl>
                                                 <Button
-                                                    variant={"outline"}
-                                                    className={cn(
-                                                        "w-full pl-3 text-left font-normal",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
+                                                    variant="outline"
+                                                    className="w-full pl-3 text-left font-normal h-10"
                                                     disabled={isSubmitting}
                                                 >
                                                     {field.value ? (
@@ -450,7 +565,7 @@ export function KrankmeldungForm({
                                         Der letzte Tag der Krankmeldung.
                                     </FormDescription>
                                     {currentValues.enddatum && isWeekend(currentValues.enddatum) && (
-                                        <Alert variant="warning" className="mt-2">
+                                        <Alert variant="warning" className="mt-2 text-sm">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertTitle>Hinweis</AlertTitle>
                                             <AlertDescription>
@@ -475,11 +590,8 @@ export function KrankmeldungForm({
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
+                                                variant="outline"
+                                                className="w-full pl-3 text-left font-normal h-10"
                                                 disabled={isSubmitting}
                                             >
                                                 {field.value ? (
@@ -582,7 +694,7 @@ export function KrankmeldungForm({
 
                     {/* Dauer-Anzeige */}
                     {currentValues.startdatum && currentValues.enddatum && (
-                        <Alert>
+                        <Alert className="mt-4">
                             <Info className="h-4 w-4" />
                             <AlertTitle>Dauer der Krankmeldung</AlertTitle>
                             <AlertDescription>
@@ -595,7 +707,7 @@ export function KrankmeldungForm({
                     )}
 
                     {/* Form-Buttons */}
-                    <div className="flex justify-end space-x-4">
+                    <div className="flex justify-end space-x-4 pt-4">
                         <Button
                             type="button"
                             variant="outline"
@@ -604,7 +716,7 @@ export function KrankmeldungForm({
                         >
                             Abbrechen
                         </Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} className="w-24">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isSubmitting
                                 ? "Wird gespeichert..."
