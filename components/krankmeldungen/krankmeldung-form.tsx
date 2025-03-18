@@ -184,7 +184,7 @@ export function KrankmeldungForm({
             mitarbeiterId: "",
             startdatum: today,
             enddatum: addDays(today, 7), // Standard: 1 Woche Krankmeldung
-            arztbesuchDatum: today, // Standard: Arztbesuch am ersten Tag
+            arztbesuchDatum: null, // KORREKTUR: Kein Standard-Arztbesuchsdatum mehr
             notizen: "",
             status: "aktiv",
         };
@@ -623,6 +623,7 @@ export function KrankmeldungForm({
                                             initialFocus
                                             weekStartsOn={1}
                                             locale={de}
+                                            defaultMonth={new Date()} // Setzt den aktuellen Monat als Startpunkt
                                         />
                                     </PopoverContent>
                                 </Popover>
