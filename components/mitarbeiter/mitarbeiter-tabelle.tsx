@@ -311,7 +311,7 @@ function StatusDialog({
                         disabled={isSubmitting}
                     >
                         {isSubmitting ? (
-                            <>Wird gespeichert...</>
+                            <>Speichert...</>
                         ) : (
                             <>{newStatus === "aktiv" ? "Aktivieren" : "Deaktivieren"}</>
                         )}
