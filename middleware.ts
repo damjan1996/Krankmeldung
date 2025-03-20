@@ -1,12 +1,17 @@
-// middleware.ts - vereinfachte Version
+// middleware.ts - vereinfachte Version mit Weiterleitung
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
+    // Root path '/' sollte zur Login-Seite weiterleiten
+    if (pathname === '/') {
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
+
     // Öffentliche Routen - benötigen keine Authentifizierung
-    const publicPaths = ['/', '/login', '/api/auth'];
+    const publicPaths = ['/login', '/api/auth'];
     const isPublicPath = publicPaths.some(path =>
         pathname === path || pathname.startsWith(`${path}/`)
     );
