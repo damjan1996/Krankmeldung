@@ -47,44 +47,8 @@ export function MainNav({
     const pathname = usePathname();
     const { data: session } = useSession();
 
-    // Standard-Navigationspunkte
-    const defaultItems = [
-        {
-            title: "Dashboard",
-            href: "/dashboard",
-            description: "Übersicht über aktuelle Krankmeldungen und Statistiken",
-            disabled: false,
-            external: false,
-        },
-        {
-            title: "Krankmeldungen",
-            href: "/krankmeldungen",
-            description: "Verwaltung aller Krankmeldungen",
-            disabled: false,
-            external: false,
-        },
-        {
-            title: "Mitarbeiter",
-            href: "/mitarbeiter",
-            description: "Übersicht und Verwaltung der Mitarbeiter",
-            disabled: false,
-            external: false,
-        },
-    ];
-
-    // Admin-Navigationspunkt (nur für Administratoren)
-    if (session?.user?.isAdmin) {
-        defaultItems.push({
-            title: "Administration",
-            href: "/admin",
-            description: "Verwaltungsoptionen für Administratoren",
-            disabled: false,
-            external: false,
-        });
-    }
-
-    // Navigationspunkte die angezeigt werden sollen (entweder die übergebenen oder die Standard-Punkte)
-    const navItems = items || defaultItems;
+    // Navigationspunkte die angezeigt werden sollen (die übergebenen Items)
+    const navItems = items || [];
 
     return (
         <div className={cn("flex gap-6 md:gap-10", className)}>

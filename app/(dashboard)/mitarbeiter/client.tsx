@@ -1,156 +1,239 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-
+// Weitere Importe für die UI-Komponenten hier...
 import { Button } from "@/components/ui/button";
-import { MitarbeiterTabelle } from "@/components/mitarbeiter/mitarbeiter-tabelle";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+} from "@/components/ui/card";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, UserRound, ExternalLink, CalendarClock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 
-// Interface für die Mitarbeiterdaten-API-Rückgabe
-interface MitarbeiterAPIData {
+// Typdefinitionen für die Daten
+interface Mitarbeiter {
     id: string;
-    personalnummer: string;
     vorname: string;
     nachname: string;
-    position: string | null;
+    personalnummer: string;
     istAktiv: boolean;
-    _count?: {
-        krankmeldungen: number;
+    position: string | null;
+}
+
+interface MitarbeiterData {
+    mitarbeiter: Mitarbeiter[];
+    counts: {
+        aktive: number;
+        inaktive: number;
+        gesamt: number;
+    };
+    user: {
+        id: string;
+        isAdmin: boolean;
     };
 }
 
-// Interface für die formatierten Tabellendaten
-interface MitarbeiterTabelleDaten {
-    id: string;
-    personalnummer: string;
-    name: string;
-    vorname: string;
-    nachname: string;
-    position: string;
-    istAktiv: boolean;
-    status: "aktiv" | "inaktiv";
-    aktiveKrankmeldungen: number;
-}
-
+// Props für die Client-Komponente
 interface MitarbeiterClientProps {
-    userId: string;
-    isAdmin: boolean;
-    aktiveCount: number;
-    inaktiveCount: number;
-    totalCount: number;
+    mitarbeiter: Mitarbeiter[];
+    counts: {
+        aktive: number;
+        inaktive: number;
+        gesamt: number;
+    };
+    user: {
+        id: string;
+        isAdmin: boolean;
+    };
 }
 
 /**
- * Client-Komponente für die Mitarbeiterübersicht
- * Verarbeitet URL-Parameter und rendert die Tabelle
+ * Client-Komponente für die Mitarbeiter-Übersicht
+ * Akzeptiert Daten direkt über Props statt data-* Attribute
  */
-export function MitarbeiterClient({
-                                      userId: _userId,
-                                      isAdmin,
-                                      aktiveCount: _aktiveCount,
-                                      inaktiveCount: _inaktiveCount,
-                                      totalCount: _totalCount
-                                  }: MitarbeiterClientProps) {
-    const _router = useRouter();
+export default function MitarbeiterClient({ mitarbeiter, counts, user }: MitarbeiterClientProps) {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
 
-    // Lokaler Zustand für Daten und Ladezustand
-    const [isLoading, setIsLoading] = useState(true);
-    const [mitarbeiterData, setMitarbeiterData] = useState<MitarbeiterTabelleDaten[]>([]);
-    const [_filteredCount, setFilteredCount] = useState(0);
+    // Status für die Komponente
+    const [isLoading, setIsLoading] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<"aktiv" | "inaktiv" | "alle">(
+        (searchParams.get("status") as "aktiv" | "inaktiv" | "alle") || "aktiv"
+    );
 
-    // Status- und Suchfilter aus URL-Parametern extrahieren
-    const status = searchParams.get('status') || 'aktiv';
-    const suche = searchParams.get('suche') || '';
+    // Status-Filter aktualisieren und URL anpassen
+    const updateStatusFilter = (value: "aktiv" | "inaktiv" | "alle") => {
+        setStatusFilter(value);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("status", value);
+        router.push(`/mitarbeiter?${params.toString()}`);
+    };
 
-    // Daten laden, wenn URL-Parameter sich ändern
-    useEffect(() => {
-        const fetchMitarbeiter = async () => {
-            setIsLoading(true);
+    // Lade-Indikator anzeigen, wenn Daten noch nicht verfügbar sind
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-10">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                <span className="ml-2">Lädt Mitarbeiterdaten...</span>
+            </div>
+        );
+    }
 
-            try {
-                // API-URL mit Filtern erstellen
-                const params = new URLSearchParams();
+    // Destrukturierung der Daten für einfacheren Zugriff
+    const { isAdmin } = user;
 
-                // Filter für aktive/inaktive Mitarbeiter
-                const istAktiv = status !== 'inaktiv';
-                params.append('aktiv', String(istAktiv));
+    // Mitarbeiter nach Status filtern
+    const filteredMitarbeiter = mitarbeiter.filter(ma =>
+        statusFilter === "alle" ? true :
+            statusFilter === "aktiv" ? ma.istAktiv :
+                !ma.istAktiv
+    );
 
-                // Suchfilter hinzufügen
-                if (suche) {
-                    params.append('suche', suche);
-                }
-
-                // Daten abrufen
-                const response = await fetch(`/api/mitarbeiter?${params.toString()}`);
-
-                if (!response.ok) {
-                    throw new Error('Fehler beim Laden der Mitarbeiter');
-                }
-
-                const data = await response.json();
-
-                // Daten formatieren mit korrekter Typprüfung
-                const formattedData: MitarbeiterTabelleDaten[] = (data.data || []).map((ma: MitarbeiterAPIData) => ({
-                    id: ma.id,
-                    personalnummer: ma.personalnummer,
-                    name: `${ma.vorname} ${ma.nachname}`,
-                    vorname: ma.vorname,
-                    nachname: ma.nachname,
-                    position: ma.position || "-",
-                    istAktiv: ma.istAktiv,
-                    status: ma.istAktiv ? "aktiv" : "inaktiv" as "aktiv" | "inaktiv",
-                    aktiveKrankmeldungen: ma._count?.krankmeldungen || 0
-                }));
-
-                setMitarbeiterData(formattedData);
-                setFilteredCount(data.meta?.count || formattedData.length);
-            } catch (error) {
-                console.error('Fehler beim Laden der Mitarbeiter:', error);
-                toast({
-                    title: 'Fehler',
-                    description: 'Mitarbeiter konnten nicht geladen werden',
-                    variant: 'destructive'
-                });
-
-                // Standardwerte setzen im Fehlerfall
-                setMitarbeiterData([]);
-                setFilteredCount(0);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchMitarbeiter();
-    }, [searchParams, toast, status, suche]);
+    // Status-Labels für die UI
+    const getStatusLabel = (status: "aktiv" | "inaktiv" | "alle"): string => {
+        switch(status) {
+            case "aktiv": return "Aktive";
+            case "inaktiv": return "Inaktive";
+            default: return "Alle";
+        }
+    };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Mitarbeiter</h1>
-                    <p className="text-muted-foreground">
-                        Verwalten Sie Mitarbeiter und deren Krankmeldungen
-                    </p>
-                </div>
-                {isAdmin && (
-                    <Link href="/mitarbeiter/neu">
-                        <Button>Neuer Mitarbeiter</Button>
-                    </Link>
-                )}
-            </div>
+        <div className="space-y-4">
+            <Card>
+                <CardHeader className="pb-2">
+                    <div>
+                        <h2 className="text-xl font-semibold">
+                            Mitarbeiter
+                        </h2>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-4 pb-0">
+                    {/* Filter-Bereich */}
+                    <div className="flex items-center justify-between mb-4 border-b pb-4">
+                        <div>
+                            <p className="text-sm font-medium">
+                                {statusFilter === "alle"
+                                    ? "Alle Mitarbeiter werden angezeigt"
+                                    : `${getStatusLabel(statusFilter)} Mitarbeiter werden angezeigt`}
+                            </p>
+                        </div>
 
-            {/* Mitarbeitertabelle mit Daten */}
-            <MitarbeiterTabelle
-                data={mitarbeiterData}
-                showActions={true}
-                showPagination={true}
-                defaultPageSize={10}
-                isLoading={isLoading}
-            />
+                        {/* Status-Filter als Dropdown */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8">
+                                    Status: {getStatusLabel(statusFilter)}
+                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                    onClick={() => updateStatusFilter("aktiv")}
+                                    className={statusFilter === "aktiv" ? "bg-muted" : ""}
+                                >
+                                    Aktiv ({counts.aktive})
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => updateStatusFilter("inaktiv")}
+                                    className={statusFilter === "inaktiv" ? "bg-muted" : ""}
+                                >
+                                    Inaktiv ({counts.inaktive})
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => updateStatusFilter("alle")}
+                                    className={statusFilter === "alle" ? "bg-muted" : ""}
+                                >
+                                    Alle ({counts.gesamt})
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+
+                    {/* Container mit fixierten Spaltenüberschriften */}
+                    <div className="relative border rounded-md overflow-hidden">
+                        {/* Fixierte Spaltenüberschriften */}
+                        <div className="absolute top-0 left-0 right-0 z-10 bg-background border-b">
+                            <div className="grid grid-cols-4 px-6 py-3">
+                                <div className="font-medium">Name</div>
+                                <div className="font-medium">Personalnummer</div>
+                                <div className="font-medium">Position</div>
+                                <div className="font-medium text-right">Status</div>
+                            </div>
+                        </div>
+
+                        {/* Scrollbarer Inhalt */}
+                        <div
+                            className="overflow-auto"
+                            style={{
+                                maxHeight: 'calc(100vh - 320px)',
+                                paddingTop: '41px' // Exakte Höhe des Headers
+                            }}
+                        >
+                            {filteredMitarbeiter.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-[200px] rounded-md border border-dashed p-8 text-center">
+                                    <UserRound className="h-10 w-10 text-muted-foreground mb-3" />
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">
+                                        Keine Mitarbeiter gefunden
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Es wurden keine Mitarbeiter mit dem ausgewählten Filter gefunden
+                                    </p>
+                                </div>
+                            ) : (
+                                filteredMitarbeiter.map((ma) => (
+                                    <div
+                                        key={ma.id}
+                                        className="grid grid-cols-4 px-6 py-4 border-b hover:bg-muted/50"
+                                    >
+                                        <div className="font-medium whitespace-nowrap">
+                                            <Link
+                                                href={`/mitarbeiter/${ma.id}`}
+                                                className="hover:underline inline-flex items-center"
+                                            >
+                                                <UserRound className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />
+                                                {ma.vorname} {ma.nachname}
+                                            </Link>
+                                        </div>
+                                        <div>{ma.personalnummer}</div>
+                                        <div>{ma.position || '-'}</div>
+                                        <div className="flex justify-end items-center">
+                                            <Badge
+                                                variant={ma.istAktiv ? "default" : "secondary"}
+                                                className="font-normal whitespace-nowrap"
+                                            >
+                                                {ma.istAktiv ? 'Aktiv' : 'Inaktiv'}
+                                            </Badge>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                asChild
+                                                className="ml-2"
+                                            >
+                                                <Link href={`/mitarbeiter/${ma.id}`}>
+                                                    <ExternalLink className="h-4 w-4" />
+                                                    <span className="sr-only">Details anzeigen</span>
+                                                </Link>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

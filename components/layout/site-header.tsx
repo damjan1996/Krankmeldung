@@ -64,7 +64,6 @@ export function SiteHeader({
     const { data: session, status } = useSession();
     const { toast } = useToast();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-    const [activeNotifications, setActiveNotifications] = useState<number>(0);
 
     // Nur auf Dashboard-Seiten anzeigen (falls aktiviert)
     const isDashboardPage = showOnlyOnDashboardPages ?
@@ -81,16 +80,6 @@ export function SiteHeader({
             setIsMobileMenuOpen(false);
         }
     }, [pathname, isMobileMenuOpen]);
-
-    // Simuliere Benachrichtigungen (in einer echten App würden diese aus einer API geladen)
-    useEffect(() => {
-        // Beispiel: Simuliere neue Benachrichtigungen basierend auf der Benutzerrolle
-        if (session?.user?.isAdmin) {
-            setActiveNotifications(3);
-        } else if (session?.user) {
-            setActiveNotifications(1);
-        }
-    }, [session]);
 
     // Abmelden mit Toast-Benachrichtigung
     const handleSignOut = async () => {
@@ -166,93 +155,6 @@ export function SiteHeader({
 
                 {/* Right Side: Notifications, Actions, Theme, User Menu */}
                 <div className="flex items-center gap-2">
-                    {/* Notification Button */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="relative">
-                                <Bell className="h-5 w-5" />
-                                {activeNotifications > 0 && (
-                                    <Badge
-                                        variant="destructive"
-                                        className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full p-0 text-xs"
-                                    >
-                                        {activeNotifications}
-                                    </Badge>
-                                )}
-                                <span className="sr-only">Benachrichtigungen</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-80" align="end">
-                            <DropdownMenuLabel className="flex items-center justify-between">
-                                Benachrichtigungen
-                                <Badge variant="outline" className="ml-1 px-1 font-normal">
-                                    {activeNotifications}
-                                </Badge>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <ScrollArea className="h-80">
-                                {activeNotifications > 0 ? (
-                                    <div className="flex flex-col gap-1 p-1">
-                                        <DropdownMenuItem className="cursor-pointer flex flex-col items-start gap-1 p-2">
-                                            <div className="flex items-center w-full justify-between mb-1">
-                                                <div className="flex items-center">
-                                                    <FileWarning className="h-5 w-5 text-yellow-500 mr-2" />
-                                                    <span className="font-medium">Krankmeldung abgelaufen</span>
-                                                </div>
-                                                <span className="text-xs text-muted-foreground">Heute</span>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                Die Krankmeldung von Max Mustermann ist heute abgelaufen.
-                                            </p>
-                                        </DropdownMenuItem>
-
-                                        {session?.user?.isAdmin && (
-                                            <>
-                                                <DropdownMenuItem className="cursor-pointer flex flex-col items-start gap-1 p-2">
-                                                    <div className="flex items-center w-full justify-between mb-1">
-                                                        <div className="flex items-center">
-                                                            <ArrowLeftRight className="h-5 w-5 text-blue-500 mr-2" />
-                                                            <span className="font-medium">Statusänderung</span>
-                                                        </div>
-                                                        <span className="text-xs text-muted-foreground">Gestern</span>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Maria Schmidt hat eine Krankmeldung als abgeschlossen markiert.
-                                                    </p>
-                                                </DropdownMenuItem>
-
-                                                <DropdownMenuItem className="cursor-pointer flex flex-col items-start gap-1 p-2">
-                                                    <div className="flex items-center w-full justify-between mb-1">
-                                                        <div className="flex items-center">
-                                                            <Calendar className="h-5 w-5 text-green-500 mr-2" />
-                                                            <span className="font-medium">Neue Krankmeldung</span>
-                                                        </div>
-                                                        <span className="text-xs text-muted-foreground">Vor 2 Tagen</span>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Julian Weber hat eine neue Krankmeldung erstellt.
-                                                    </p>
-                                                </DropdownMenuItem>
-                                            </>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-40">
-                                        <Inbox className="h-10 w-10 text-muted-foreground mb-2" />
-                                        <p className="text-sm text-muted-foreground">
-                                            Keine Benachrichtigungen vorhanden
-                                        </p>
-                                    </div>
-                                )}
-                            </ScrollArea>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild className="cursor-pointer justify-center">
-                                <Link href="/dashboard">
-                                    Alle Benachrichtigungen anzeigen
-                                </Link>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
 
                     {/* Theme Toggle */}
                     <ThemeToggle />

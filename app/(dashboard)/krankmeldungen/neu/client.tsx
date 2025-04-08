@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-
 import { Button } from "@/components/ui/button";
 import { KrankmeldungForm } from "@/components/krankmeldungen/krankmeldung-form";
 
@@ -49,25 +48,8 @@ export function NeueKrankmeldungClient({ mitarbeiter, userId }: NeueKrankmeldung
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Neue Krankmeldung</h1>
-                    <p className="text-muted-foreground">
-                        {selectedMitarbeiter
-                            ? `Krankmeldung erfassen für ${selectedMitarbeiter.vorname} ${selectedMitarbeiter.nachname}`
-                            : "Erfassen Sie eine neue Krankmeldung für einen Mitarbeiter"
-                        }
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Link href="/krankmeldungen">
-                        <Button variant="outline">Abbrechen</Button>
-                    </Link>
-                </div>
-            </div>
-
-            {/* Krankmeldungsformular */}
+        <div className="w-full">
+            {/* Formular direkt ohne Card-Wrapper */}
             <KrankmeldungForm
                 mitarbeiter={mitarbeiter}
                 userId={userId}

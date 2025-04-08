@@ -1,12 +1,12 @@
-// app/(dashboard)/mitarbeiter/page.tsx
-
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { MitarbeiterClient } from "./client";
+
+// Client-Komponente direkt importieren (ohne dynamic)
+import MitarbeiterClientWrapper from "./client-wrapper";
 
 export const metadata: Metadata = {
     title: "Mitarbeiter - GFU Krankmeldungssystem",
@@ -26,7 +26,22 @@ export default async function MitarbeiterPage() {
     }
 
     // Parallele Datenbankabfragen für Performance-Optimierung
-    const [aktiveCount, inaktiveCount] = await Promise.all([
+    const [mitarbeiterData, aktiveCount, inaktiveCount] = await Promise.all([
+        // Alle Mitarbeiter laden (wird client-seitig gefiltert)
+        prisma.mitarbeiter.findMany({
+            select: {
+                id: true,
+                vorname: true,
+                nachname: true,
+                personalnummer: true,
+                istAktiv: true,
+                position: true
+                // Nur Felder selektieren, die gemäß Schema existieren
+            },
+            orderBy: {
+                nachname: 'asc'
+            }
+        }),
         // Zählung aktiver Mitarbeiter
         prisma.mitarbeiter.count({
             where: { istAktiv: true }
@@ -40,13 +55,20 @@ export default async function MitarbeiterPage() {
     // Benutzerrolle prüfen (für Admin-Funktionen)
     const isAdmin = Boolean(session.user.isAdmin);
 
-    return (
-        <MitarbeiterClient
-            userId={session.user.id}
-            isAdmin={isAdmin}
-            aktiveCount={aktiveCount}
-            inaktiveCount={inaktiveCount}
-            totalCount={aktiveCount + inaktiveCount}
-        />
-    );
+    // Daten an die Client-Komponente übergeben
+    const mitarbeiterProps = {
+        mitarbeiter: mitarbeiterData,
+        counts: {
+            aktive: aktiveCount,
+            inaktive: inaktiveCount,
+            gesamt: aktiveCount + inaktiveCount
+        },
+        user: {
+            id: session.user.id,
+            isAdmin
+        }
+    };
+
+    // Client-Wrapper-Komponente mit Daten rendern
+    return <MitarbeiterClientWrapper data={mitarbeiterProps} />;
 }

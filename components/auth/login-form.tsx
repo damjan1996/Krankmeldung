@@ -96,9 +96,6 @@ export function LoginForm() {
         <Card className="w-full">
             <CardHeader className="space-y-1">
                 <CardTitle className="text-2xl font-semibold">Anmelden</CardTitle>
-                <CardDescription>
-                    Geben Sie Ihre Anmeldedaten ein, um auf das Krankmeldungssystem zuzugreifen
-                </CardDescription>
             </CardHeader>
 
             <form onSubmit={handleSubmit(onSubmit)}>
@@ -162,15 +159,6 @@ export function LoginForm() {
                                 {errors.password.message}
                             </p>
                         )}
-                    </div>
-
-                    {/* Hilfstext mit Demo-Zugangsdaten */}
-                    <div className="text-sm text-muted-foreground">
-                        <p>Demo-Zugangsdaten:</p>
-                        <ul className="list-disc pl-4 mt-1 space-y-1">
-                            <li>Benutzer: <span className="font-mono">benutzer@gfu-krankmeldung.de</span> / <span className="font-mono">password123</span></li>
-                            <li>Admin: <span className="font-mono">admin@gfu-krankmeldung.de</span> / <span className="font-mono">admin123</span></li>
-                        </ul>
                     </div>
                 </CardContent>
 

@@ -32,8 +32,6 @@ export default async function DashboardLayout({
 
     return (
         <div className="flex min-h-screen flex-col overflow-hidden">
-            {/* Header mit Navigation und Benutzermenü */}
-            <SiteHeader />
 
             {/* Hauptinhalt mit Seitenleiste und Content-Bereich */}
             <div className="container flex-1 items-start overflow-hidden md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">

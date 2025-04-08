@@ -12,7 +12,7 @@ export default function AuthLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center">
+        <div className="h-screen overflow-hidden bg-gray-50 flex flex-col justify-center">
             {/* Logo/Header-Bereich */}
             <div className="absolute top-4 left-4 flex items-center">
                 {/* Optional: Logo hier platzieren */}
@@ -21,7 +21,7 @@ export default function AuthLayout({
             </div>
 
             {/* Hauptinhalt */}
-            <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+            <div className="flex-1 flex flex-col justify-center">
                 {/* auth-relatedter Inhalt (Login, etc.) */}
                 {children}
             </div>

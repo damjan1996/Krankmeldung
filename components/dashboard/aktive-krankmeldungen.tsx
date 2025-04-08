@@ -45,6 +45,8 @@ interface Krankmeldung {
 interface AktiveKrankmeldungenProps {
     krankmeldungen: Krankmeldung[];
     limit?: number;
+    isLoading?: boolean;
+    hideHeader?: boolean;
 }
 
 /**
@@ -53,8 +55,20 @@ interface AktiveKrankmeldungenProps {
  */
 export function AktiveKrankmeldungen({
                                          krankmeldungen,
-                                         limit = 5
+                                         limit = 5,
+                                         isLoading = false,
+                                         hideHeader = false
                                      }: AktiveKrankmeldungenProps) {
+    // Loading State
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-10">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                <span className="ml-2">Lädt Krankmeldungen...</span>
+            </div>
+        );
+    }
+
     // Keine Krankmeldungen vorhanden - Leere State anzeigen
     if (krankmeldungen.length === 0) {
         return (
@@ -76,6 +90,101 @@ export function AktiveKrankmeldungen({
     // Heutiges Datum für Berechnungen
     const today = new Date();
 
+    // Wenn header versteckt werden soll, nur die Tabellenzeilen zurückgeben
+    if (hideHeader) {
+        return (
+            <div className="space-y-1">
+                {displayedKrankmeldungen.map((krankmeldung) => {
+                    // Formatiere Datum im deutschen Format
+                    const startDate = new Date(krankmeldung.startdatum);
+                    const endDate = new Date(krankmeldung.enddatum);
+
+                    // Berechne die Gesamtdauer der Krankmeldung in Tagen (+1, da inklusive Anfang und Ende)
+                    const totalDuration = differenceInDays(endDate, startDate) + 1;
+
+                    // Berechne, wie viele Tage bereits vergangen sind, wenn Krankmeldung bereits begonnen hat
+                    const daysPassed = startDate <= today
+                        ? Math.min(differenceInDays(today, startDate) + 1, totalDuration)
+                        : 0;
+
+                    // Fortschritt in Prozent berechnen
+                    const progressPercent = Math.round((daysPassed / totalDuration) * 100);
+
+                    return (
+                        <div
+                            key={krankmeldung.id}
+                            className="grid grid-cols-4 px-6 py-4 border-b hover:bg-muted/50"
+                        >
+                            <div className="font-medium whitespace-nowrap">
+                                <Link
+                                    href={`/mitarbeiter/${krankmeldung.mitarbeiter.id}`}
+                                    className="hover:underline inline-flex items-center"
+                                >
+                                    <UserRound className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />
+                                    {krankmeldung.mitarbeiter.vorname} {krankmeldung.mitarbeiter.nachname}
+                                </Link>
+                                <div className="text-xs text-muted-foreground">
+                                    {krankmeldung.mitarbeiter.personalnummer}
+                                </div>
+                            </div>
+                            <div className="whitespace-nowrap">
+                                <div>
+                                    {format(startDate, "dd.MM.yyyy", { locale: de })} - {format(endDate, "dd.MM.yyyy", { locale: de })}
+                                </div>
+                                {/* Fortschrittsbalken */}
+                                <div className="w-full bg-muted h-1.5 rounded-full mt-1.5 overflow-hidden">
+                                    <div
+                                        className="bg-primary h-full rounded-full"
+                                        style={{ width: `${progressPercent}%` }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="text-right whitespace-nowrap">
+                                {totalDuration} {totalDuration === 1 ? "Tag" : "Tage"}
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <Badge
+                                    variant={krankmeldung.status === "aktiv" ? "default" : "secondary"}
+                                    className="font-normal whitespace-nowrap ml-auto"
+                                >
+                                    {krankmeldung.status}
+                                </Badge>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    asChild
+                                    className="ml-2"
+                                >
+                                    <Link href={`/krankmeldungen/${krankmeldung.id}`}>
+                                        <ExternalLink className="h-4 w-4" />
+                                        <span className="sr-only">Details anzeigen</span>
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* Weitere Krankmeldungen anzeigen, wenn limitiert und mehr vorhanden sind */}
+                {limit && krankmeldungen.length > limit && (
+                    <div className="flex justify-end">
+                        <Button
+                            variant="link"
+                            size="sm"
+                            className="text-xs"
+                            asChild
+                        >
+                            <Link href="/krankmeldungen?status=aktiv">
+                                {krankmeldungen.length - limit} weitere Krankmeldungen anzeigen
+                            </Link>
+                        </Button>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Vollständige Tabelle mit Header zurückgeben
     return (
         <div className="space-y-1">
             <Table>
@@ -178,3 +287,6 @@ export function AktiveKrankmeldungen({
         </div>
     );
 }
+
+// Stellen Sie sicher, dass diese Komponente auch als default export verfügbar ist
+export default AktiveKrankmeldungen;
