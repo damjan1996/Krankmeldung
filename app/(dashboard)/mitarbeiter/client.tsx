@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-// Weitere Importe für die UI-Komponenten hier...
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -16,9 +15,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, UserRound, ExternalLink, CalendarClock } from "lucide-react";
+import { ChevronDown, UserRound, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
 
 // Typdefinitionen für die Daten
 interface Mitarbeiter {
@@ -28,19 +26,6 @@ interface Mitarbeiter {
     personalnummer: string;
     istAktiv: boolean;
     position: string | null;
-}
-
-interface MitarbeiterData {
-    mitarbeiter: Mitarbeiter[];
-    counts: {
-        aktive: number;
-        inaktive: number;
-        gesamt: number;
-    };
-    user: {
-        id: string;
-        isAdmin: boolean;
-    };
 }
 
 // Props für die Client-Komponente
@@ -61,13 +46,12 @@ interface MitarbeiterClientProps {
  * Client-Komponente für die Mitarbeiter-Übersicht
  * Akzeptiert Daten direkt über Props statt data-* Attribute
  */
-export default function MitarbeiterClient({ mitarbeiter, counts, user }: MitarbeiterClientProps) {
+export default function MitarbeiterClient({ mitarbeiter, counts, user: _user }: MitarbeiterClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { toast } = useToast();
 
     // Status für die Komponente
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState<"aktiv" | "inaktiv" | "alle">(
         (searchParams.get("status") as "aktiv" | "inaktiv" | "alle") || "aktiv"
     );
@@ -89,9 +73,6 @@ export default function MitarbeiterClient({ mitarbeiter, counts, user }: Mitarbe
             </div>
         );
     }
-
-    // Destrukturierung der Daten für einfacheren Zugriff
-    const { isAdmin } = user;
 
     // Mitarbeiter nach Status filtern
     const filteredMitarbeiter = mitarbeiter.filter(ma =>

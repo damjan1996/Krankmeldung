@@ -136,11 +136,11 @@ export function KrankmeldungenTabelle({
     }, [initialData]);
 
     // Funktion zum Formatieren von Datum für API-Anfragen
-    const formatDate = useCallback((date: string | Date) => {
+    const formatDate = (date: string | Date) => {
         if (!date) return null;
         const d = new Date(date);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }, []);
+    };
 
     /**
      * Standard-Implementierung für Statusänderungen
@@ -231,7 +231,7 @@ export function KrankmeldungenTabelle({
     // Die zu verwendende Statusänderungsfunktion (entweder die übergebene oder die Standard-Implementierung)
     const handleStatusChange = onStatusChange || defaultHandleStatusChange;
 
-    // Tabellenspalten definieren
+    // Tabellenspalten definieren - Removed formatDate from dependencies as it doesn't need to be recreated
     const getColumns = useCallback((): ColumnDef<KrankmeldungenTabelleDaten>[] => [
         // Mitarbeiter
         {
@@ -406,7 +406,7 @@ export function KrankmeldungenTabelle({
                 );
             },
         },
-    ], [isUpdating, handleStatusChange, formatDate, showActions]);
+    ], [isUpdating, handleStatusChange, showActions]);
 
     /**
      * Tabelleninstanz erstellen

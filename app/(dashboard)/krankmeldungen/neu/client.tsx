@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { KrankmeldungForm } from "@/components/krankmeldungen/krankmeldung-form";
 
 interface Mitarbeiter {
@@ -24,7 +22,7 @@ interface NeueKrankmeldungClientProps {
 export function NeueKrankmeldungClient({ mitarbeiter, userId }: NeueKrankmeldungClientProps) {
     const searchParams = useSearchParams();
     const [mitarbeiterId, setMitarbeiterId] = useState("");
-    const [selectedMitarbeiter, setSelectedMitarbeiter] = useState<Mitarbeiter | null>(null);
+    const [_selectedMitarbeiter, setSelectedMitarbeiter] = useState<Mitarbeiter | null>(null);
 
     // useEffect ist sicher für Client-Komponenten und ermöglicht den Zugriff auf searchParams
     useEffect(() => {

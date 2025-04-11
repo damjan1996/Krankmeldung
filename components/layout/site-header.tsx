@@ -20,23 +20,16 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { MainNav } from "@/components/layout/main-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
-    Bell,
     CalendarPlus,
-    Calendar,
     LogOut,
     Menu,
     Settings,
-    // Removing unused imports and keeping the ones that are used
-    FileWarning,
-    ArrowLeftRight,
-    Globe,
-    Inbox
+    Globe
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/lib/hooks/use-toast";

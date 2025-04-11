@@ -3,7 +3,6 @@
  */
 
 import { BaseFilterOptions } from './index';
-import { MitarbeiterBase } from './mitarbeiter';
 
 // Krankmeldung status options
 export type KrankmeldungStatus = 'aktiv' | 'abgeschlossen' | 'storniert' | 'alle';

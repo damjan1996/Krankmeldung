@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 
 import { authOptions } from "@/lib/auth";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 /**

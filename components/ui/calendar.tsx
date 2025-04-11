@@ -12,8 +12,6 @@ import { buttonVariants } from "@/components/ui/button"
 import {
     Select,
     SelectContent,
-    // SelectItem wird nicht verwendet, daher mit Unterstrich umbenennen
-    SelectItem as _SelectItem,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"

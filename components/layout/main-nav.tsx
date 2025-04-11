@@ -5,7 +5,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,7 +44,9 @@ export function MainNav({
                             className,
                         }: MainNavProps) {
     const pathname = usePathname();
-    const { data: session } = useSession();
+    // Prefix the session with underscore to mark it as intentionally unused
+    // (we'll use it in a future iteration)
+    const _session = React.useState();
 
     // Navigationspunkte die angezeigt werden sollen (die übergebenen Items)
     const navItems = items || [];
